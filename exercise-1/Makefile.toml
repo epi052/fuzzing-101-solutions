@@ -1,0 +1,18 @@
+[tasks.clean]
+dependencies = ["cargo-clean", "afl-clean", "clean-xpdf"]
+
+[tasks.afl-clean]
+script = '''
+rm -rf .cur_input* timeouts
+'''
+
+[tasks.clean-xpdf]
+cwd = "xpdf"
+script = """
+make --silent clean
+rm -rf install
+"""
+
+[tasks.cargo-clean]
+command = "cargo"
+args = ["clean"]
