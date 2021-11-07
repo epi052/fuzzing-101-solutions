@@ -2,6 +2,8 @@
 
 Companion repository to the [Fuzzing101 with LibAFL](https://epi052.gitlab.io/notes-to-self/blog/2021-11-01-fuzzing-101-with-libafl/) series of blog posts.
 
+[Tags](https://github.com/epi052/fuzzing-101-solutions/tags) are sync'd with blog post releases and can be used to view the repo in the same state as any particular blog post.
+
 ## Overview
 
 Twitter user [Antonio Morales](https://twitter.com/nosoynadiemas?lang=en) created the [Fuzzing101](https://github.com/antonio-morales/Fuzzing101) repository 
