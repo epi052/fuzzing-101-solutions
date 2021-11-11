@@ -16,7 +16,7 @@ GOOLIBDIR = ../goo
 
 CXXFLAGS = -g -O2 -DHAVE_CONFIG_H -I.. -I$(GOOSRCDIR) -I$(srcdir)
 
-CXX = /usr/local/bin/afl-clang-fast++
+CXX = /usr/local/bin/afl-clang-lto++
 AR = ar rc
 RANLIB = ranlib
 
