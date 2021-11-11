@@ -19,10 +19,32 @@ use libafl::{feedback_and_fast, feedback_or, Fuzzer, StdFuzzer};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use clap::{App, Arg};
+
 /// Size of coverage map shared between observer and executor
 const MAP_SIZE: usize = 65536;
 
+/// parse -c/--compiler from cli; return "fast" or "lto"
+fn get_compiler_from_cli() -> String {
+    let matches = App::new("fuzzer")
+        .arg(
+            Arg::new("compiler")
+                .possible_values(&["fast", "lto"])
+                .short('c')
+                .long("compiler")
+                .value_name("COMPILER")
+                .about("choose your afl-clang variant (default: fast)")
+                .takes_value(true)
+                .default_value("fast"),
+        )
+        .get_matches();
+
+    String::from(matches.value_of("compiler").unwrap())
+}
+
 fn main() {
+    let compiler = get_compiler_from_cli();
+
     //
     // Component: Corpus
     //
@@ -171,18 +193,18 @@ fn main() {
     // ForkserverExecutor and sets a timeout before each run. This gives us an executor
     // that implements an AFL-like mechanism that will spawn child processes to fuzz
     let fork_server = ForkserverExecutor::new(
-        "./xpdf/install/bin/pdftotext".to_string(),
-        &[String::from("@@")],
-        // we're passing testcases via on-disk file; set to use_shmem_testcase to false
-        false,
+        format!("./xpdf/built-with-{}/bin/pdftotext", compiler),
+        &[],
+        // we're passing testcases via shmem; set to use_shmem_testcase to true
+        true,
         tuple_list!(edges_observer, time_observer),
-    ).unwrap();
+    )
+    .unwrap();
 
     let timeout = Duration::from_millis(5000);
 
     // ./pdftotext @@
-    let mut executor = TimeoutForkserverExecutor::new(fork_server, timeout)
-        .unwrap();
+    let mut executor = TimeoutForkserverExecutor::new(fork_server, timeout).unwrap();
 
     // In case the corpus is empty (i.e. on first run), load existing test cases from on-disk
     // corpus

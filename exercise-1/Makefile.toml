@@ -10,7 +10,7 @@ rm -rf .cur_input* timeouts
 cwd = "xpdf"
 script = """
 make --silent clean
-rm -rf install
+rm -rf built-with-*
 """
 
 [tasks.cargo-clean]

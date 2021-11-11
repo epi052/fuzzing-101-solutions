@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 #ifdef WIN32
 #  include <windows.h>
 #endif
@@ -43,6 +44,8 @@
 #define headerSearchSize 1024	// read this many bytes at beginning of
 				//   file to look for '%PDF'
 
+__AFL_FUZZ_INIT();
+
 //------------------------------------------------------------------------
 // PDFDoc
 //------------------------------------------------------------------------
@@ -65,39 +68,13 @@ PDFDoc::PDFDoc(GString *fileNameA, GString *ownerPassword,
   outline = NULL;
 #endif
 
-  fileName = fileNameA;
-  fileName1 = fileName;
-
-
-  // try to open file
-  fileName2 = NULL;
-#ifdef VMS
-  if (!(file = fopen(fileName1->getCString(), "rb", "ctx=stm"))) {
-    error(-1, "Couldn't open file '%s'", fileName1->getCString());
-    errCode = errOpenFile;
-    return;
-  }
-#else
-  if (!(file = fopen(fileName1->getCString(), "rb"))) {
-    fileName2 = fileName->copy();
-    fileName2->lowerCase();
-    if (!(file = fopen(fileName2->getCString(), "rb"))) {
-      fileName2->upperCase();
-      if (!(file = fopen(fileName2->getCString(), "rb"))) {
-	error(-1, "Couldn't open file '%s'", fileName->getCString());
-	delete fileName2;
-	errCode = errOpenFile;
-	return;
-      }
-    }
-    delete fileName2;
-  }
-#endif
+  unsigned char *buf = __AFL_FUZZ_TESTCASE_BUF;
+  int len = __AFL_FUZZ_TESTCASE_LEN;
 
   // create stream
   obj.initNull();
-  str = new FileStream(file, 0, gFalse, 0, &obj);
 
+  str = new MemStream((char *) buf, 0, (Guint) len, &obj);
   ok = setup(ownerPassword, userPassword);
 }
 
