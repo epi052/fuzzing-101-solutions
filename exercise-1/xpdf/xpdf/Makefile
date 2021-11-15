@@ -8,7 +8,7 @@
 
 SHELL = /bin/sh
 
-prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/install
+prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/built-with-lto
 srcdir = .
 
 
@@ -34,7 +34,7 @@ OTHERLIBS =   \
 	-L$(FOFILIBDIR) -lfofi \
 	-L$(GOOLIBDIR) -lGoo
 
-CXX = /usr/local/bin/afl-clang-fast++
+CXX = /usr/local/bin/afl-clang-lto++
 
 LIBPREFIX = lib
 EXE = 

@@ -2,6 +2,7 @@
 members = [
     "exercise-1"
 ]
+exclude = [ "LibAFL" ]
 
 [profile.release]
 lto = true

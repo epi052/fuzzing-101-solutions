@@ -53,7 +53,7 @@
 /*
  * Full path for the system-wide xpdfrc file.
  */
-#define SYSTEM_XPDFRC "/home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/install/etc/xpdfrc"
+#define SYSTEM_XPDFRC "/home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/built-with-lto/etc/xpdfrc"
 
 /*
  * Various include files and functions.
@@ -71,7 +71,7 @@
 #define HAVE_MKSTEMPS 1
 /* #undef SELECT_TAKES_INT */
 #define HAVE_FSEEKO 1
-/* #undef HAVE_FSEEK64 */
+#define HAVE_FSEEK64 1
 /* #undef _FILE_OFFSET_BITS */
 /* #undef _LARGE_FILES */
 /* #undef _LARGEFILE_SOURCE */
