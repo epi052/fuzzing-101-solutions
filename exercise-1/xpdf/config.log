@@ -1631,6 +1631,7 @@ config.status:686: creating fofi/Makefile
 config.status:686: creating splash/Makefile
 config.status:686: creating xpdf/Makefile
 config.status:790: creating aconf.h
+config.status:920: aconf.h is unchanged
 configure:11794: WARNING: Couldn't find Motif
 configure:11798: WARNING: Couldn't find FreeType
 configure:11802: WARNING: -- You will be able to compile pdftops, pdftotext,

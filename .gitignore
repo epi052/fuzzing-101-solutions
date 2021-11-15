@@ -11,3 +11,5 @@
 **/crashes/
 **/timeouts/
 **/.cur_input*
+
+LibAFL/
