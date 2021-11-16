@@ -95,9 +95,9 @@ fn libafl_main() -> Result<(), Error> {
     //
     // The goal is to do similar deduplication to what AFL does
     //
-    // The feedback_and_fast macro combines the two feedbacks with an eager AND operation, which
-    // means both feedbacks functions will be called, even if the first is false and the
-    // result is already known.
+    // The feedback_and_fast macro combines the two feedbacks with a fast AND operation, which
+    // means only enough feedback functions will be called to know whether or not the objective
+    // has been met, i.e. short-circuiting logic.
     let objective = feedback_and_fast!(
         TimeoutFeedback::new(),
         MaxMapFeedback::new(&objective_state, &edges_observer)
