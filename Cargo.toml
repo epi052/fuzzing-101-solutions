@@ -1,8 +1,9 @@
 [workspace]
 members = [
-    "exercise-1"
+    "exercise-1",
+    "exercise-2"
 ]
-exclude = [ "LibAFL" ]
+exclude = [ "LibAFL", "AFLTriage" ]
 
 [profile.release]
 lto = true

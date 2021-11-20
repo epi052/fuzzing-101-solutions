@@ -1,0 +1,10 @@
+Makefile.in
+Makefile
+test-exif
+*.o
+.deps
+.libs
+test-mem
+test-mnote
+test-tree
+test-value

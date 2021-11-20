@@ -295,6 +295,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "exercise-2"
+version = "0.1.0"
+dependencies = [
+ "libafl",
+ "libafl_cc",
+ "libafl_targets",
+]
+
+[[package]]
 name = "exercise-one-solution"
 version = "0.1.0"
 dependencies = [

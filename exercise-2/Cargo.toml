@@ -1,0 +1,16 @@
+[package]
+name = "exercise-2"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# commit c7512fceecfc222e0618a5c7ac1a29a3fcfeeb16
+libafl = { path = "../LibAFL/libafl" }
+libafl_cc = { path = "../LibAFL/libafl_cc" }
+libafl_targets = { path = "../LibAFL/libafl_targets" , features = ["libfuzzer", "sancov_pcguard_hitcounts", "sancov_cmplog"] }
+
+[lib]
+name = "exercisetwo"
+crate-type = ["staticlib"]
