@@ -1,0 +1,52 @@
+# composite tasks
+[tasks.clean]
+dependencies = ["cargo-clean", "libexif-clean", "build-dir-clean"]
+
+[tasks.build]
+dependencies = ["clean", "build-compilers", "copy-project-to-build", "build-libexif", "build-fuzzer"]
+
+# clean up tasks
+[tasks.cargo-clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.libexif-clean]
+command = "make"
+args = ["-C", "libexif", "clean", "-i"]
+
+[tasks.build-dir-clean]
+command = "rm"
+args = ["-rf", "build/"]
+
+# build tasks
+[tasks.build-compilers]
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.copy-project-to-build]
+script = """
+mkdir -p build/
+cp ${CARGO_MAKE_WORKING_DIRECTORY}/../target/release/ex2_compiler build/
+cp ${CARGO_MAKE_WORKING_DIRECTORY}/../target/release/libexercisetwo.a build/
+"""
+
+[tasks.build-fuzzer]
+cwd = "build"
+command = "./ex2_compiler"
+args = ["-I", "../libexif/libexif", "-I", "../libexif", "-o", "fuzzer", "../harness.c", "lib/libexif.a"]
+
+[tasks.build-triager]
+cwd = "build"
+command = "./ex2_compiler"
+args = ["-D", "TRIAGE_TESTER", "-I", "../libexif/libexif", "-I", "../libexif", "-o", "triager", "../harness.c", "lib/libexif.a"]
+
+[tasks.build-libexif]
+cwd = "libexif"
+env = { "CC" = "${CARGO_MAKE_WORKING_DIRECTORY}/build/ex2_compiler", "LLVM_CONFIG" = "llvm-config-11"}
+script = """
+autoreconf -fi
+./configure --enable-shared=no --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
+make -i
+make install -i
+"""
+

@@ -1,13 +1,12 @@
 use libafl::bolts::current_nanos;
 use libafl::bolts::rands::StdRand;
-use libafl::bolts::shmem::{ShMemProvider, StdShMemProvider};
 use libafl::bolts::tuples::tuple_list;
 use libafl::corpus::{
     Corpus, InMemoryCorpus, IndexesLenTimeMinimizerCorpusScheduler, OnDiskCorpus,
     QueueCorpusScheduler,
 };
 use libafl::events::{setup_restarting_mgr_std, EventConfig, EventRestarter};
-use libafl::executors::{ExitKind, InProcessExecutor, InProcessForkExecutor, TimeoutExecutor};
+use libafl::executors::{ExitKind, InProcessExecutor, TimeoutExecutor};
 use libafl::feedbacks::{CrashFeedback, MapFeedbackState, MaxMapFeedback, TimeFeedback};
 use libafl::inputs::{BytesInput, HasTargetBytes};
 use libafl::monitors::MultiMonitor;
