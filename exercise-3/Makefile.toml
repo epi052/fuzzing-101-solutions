@@ -1,52 +1,46 @@
 # composite tasks
 [tasks.clean]
-dependencies = ["cargo-clean", "libexif-clean", "build-dir-clean"]
+dependencies = ["clean-cargo", "clean-libpcap", "clean-tcpdump", "clean-build-dir"]
 
 [tasks.build]
-dependencies = ["clean", "build-compilers", "copy-project-to-build", "build-libexif", "build-fuzzer"]
+dependencies = ["clean", "copy-project-to-build", "build-libpcap", "build-tcpdump"]
 
 # clean up tasks
-[tasks.cargo-clean]
+[tasks.clean-cargo]
 command = "cargo"
 args = ["clean"]
 
-[tasks.libexif-clean]
+[tasks.clean-libpcap]
 command = "make"
-args = ["-C", "libexif", "clean", "-i"]
+args = ["-C", "libpcap", "clean"]
 
-[tasks.build-dir-clean]
+[tasks.clean-tcpdump]
+command = "make"
+args = ["-C", "tcpdump", "clean"]
+
+[tasks.clean-build-dir]
 command = "rm"
 args = ["-rf", "build/"]
 
 # build tasks
-[tasks.build-compilers]
-command = "cargo"
-args = ["build", "--release"]
-
 [tasks.copy-project-to-build]
 script = """
 mkdir -p build/
-cp ${CARGO_MAKE_WORKING_DIRECTORY}/../target/release/ex2_compiler build/
-cp ${CARGO_MAKE_WORKING_DIRECTORY}/../target/release/libexercisetwo.a build/
 """
 
-[tasks.build-fuzzer]
-cwd = "build"
-command = "./ex2_compiler"
-args = ["-I", "../libexif/libexif", "-I", "../libexif", "-o", "fuzzer", "../harness.c", "lib/libexif.a"]
-
-[tasks.build-triager]
-cwd = "build"
-command = "./ex2_compiler"
-args = ["-D", "TRIAGE_TESTER", "-I", "../libexif/libexif", "-I", "../libexif", "-o", "triager", "../harness.c", "lib/libexif.a"]
-
-[tasks.build-libexif]
-cwd = "libexif"
-env = { "CC" = "${CARGO_MAKE_WORKING_DIRECTORY}/build/ex2_compiler", "LLVM_CONFIG" = "llvm-config-11"}
+[tasks.build-libpcap]
+cwd = "libpcap"
 script = """
-autoreconf -fi
 ./configure --enable-shared=no --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
-make -i
-make install -i
+make
+make install
+"""
+
+[tasks.build-tcpdump]
+cwd = "tcpdump"
+script = """
+CPPFLAGS=-I"${CARGO_MAKE_WORKING_DIRECTORY}/../build/include/" LDFLAGS="-L${CARGO_MAKE_WORKING_DIRECTORY}/../build/lib/" ./configure --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
+make
+make install
 """
 
