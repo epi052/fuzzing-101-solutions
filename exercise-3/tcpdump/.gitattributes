@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Normalize line endings to LF on checkin and
+# prevents conversion to CRLF when the file is checked out
+tests/*.out text eol=lf

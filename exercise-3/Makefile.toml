@@ -3,7 +3,9 @@
 dependencies = ["clean-cargo", "clean-libpcap", "clean-tcpdump", "clean-build-dir"]
 
 [tasks.build]
-dependencies = ["clean", "copy-project-to-build", "build-libpcap", "build-tcpdump"]
+command = ""
+args = []
+dependencies = ["clean", "build-cargo", "copy-project-to-build", "build-libpcap", "build-tcpdump"]
 
 # clean up tasks
 [tasks.clean-cargo]
@@ -20,15 +22,22 @@ args = ["-C", "tcpdump", "clean"]
 
 [tasks.clean-build-dir]
 command = "rm"
-args = ["-rf", "build/"]
+args = ["-rf", "build/", "solutions/"]
 
 # build tasks
+[tasks.build-cargo]
+command = "cargo"
+args = ["build", "--release"]
+
 [tasks.copy-project-to-build]
 script = """
 mkdir -p build/
+cp ../target/release/exercise-3 build/
+sudo setcap cap_sys_admin+epi build/exercise-3
 """
 
 [tasks.build-libpcap]
+env = { "CC" = "afl-clang-lto", "LLVM_CONFIG" = "llvm-config-12", "AFL_MAP_SIZE" = "80642", "AFL_USE_ASAN" = "1" }
 cwd = "libpcap"
 script = """
 ./configure --enable-shared=no --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
@@ -37,10 +46,21 @@ make install
 """
 
 [tasks.build-tcpdump]
+# environment variables in table `build-tcpdump.env` below
 cwd = "tcpdump"
 script = """
-CPPFLAGS=-I"${CARGO_MAKE_WORKING_DIRECTORY}/../build/include/" LDFLAGS="-L${CARGO_MAKE_WORKING_DIRECTORY}/../build/lib/" ./configure --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
+./configure --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
 make
 make install
+sudo setcap cap_sys_admin+epi ../build/sbin/tcpdump
+mkdir -p ../solutions
 """
+
+[tasks.build-tcpdump.env]
+"CC" = "afl-clang-lto"
+"LLVM_CONFIG" = "llvm-config-12"
+"AFL_USE_ASAN" = "1"
+"AFL_MAP_SIZE" = "80642"
+"CFLAGS" = "-I${CARGO_MAKE_WORKING_DIRECTORY}/../build/include/"
+"LDFLAGS" = "-L${CARGO_MAKE_WORKING_DIRECTORY}/../build/lib/"
 
