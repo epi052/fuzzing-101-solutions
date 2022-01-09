@@ -1,0 +1,48 @@
+# composite tasks
+[tasks.clean]
+dependencies = ["clean-cargo", "clean-build-dir"]
+
+[tasks.build]
+command = "true"
+args = []
+dependencies = ["build-directories", "build-cargo", "copy-project-to-build", "configure-libtiff", "build-libtiff"]
+
+# clean up task
+[tasks.clean-cargo]
+command = "cargo"
+args = ["clean"]
+
+[tasks.clean-libtiff]
+command = "make"
+args = ["-C", "tiff", "clean"]
+
+[tasks.clean-build-dir]
+command = "rm"
+args = ["-rf", "build/"]
+
+# build tasks
+[tasks.build-cargo]
+env = {CROSS_CC = "aarch64-linux-gnu-gcc"}
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.build-directories]
+command = "mkdir"
+args = ["-p", "corpus", "crashes", "build"]
+
+[tasks.copy-project-to-build]
+command = "cp"
+args = ["../target/release/exercise-4", "../target/release/libqemu-aarch64.so", "../target/release/libqasan.so", "build/"]
+
+[tasks.configure-libtiff]
+cwd = "tiff"
+script = """
+./configure --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/" --target aarch64-unknown-linux-gnu --disable-cxx --host x86_64-unknown-linux-gnu CC=aarch64-linux-gnu-gcc
+"""
+
+[tasks.build-libtiff]
+cwd = "tiff"
+script = """
+make
+make install
+"""

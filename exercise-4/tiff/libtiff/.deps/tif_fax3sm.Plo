@@ -1,0 +1,6 @@
+tif_fax3sm.lo: tif_fax3sm.c /usr/aarch64-linux-gnu/include/stdc-predef.h \
+ tiff.h tiffconf.h tif_fax3.h
+/usr/aarch64-linux-gnu/include/stdc-predef.h:
+tiff.h:
+tiffconf.h:
+tif_fax3.h:

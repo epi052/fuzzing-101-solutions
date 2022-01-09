@@ -16,7 +16,7 @@ mod names {
     pub const VERBOSE: &str = "libafl-verbose";
     pub const PORT: &str = "libafl-port";
     pub const STDOUT: &str = "libafl-stdout";
-    pub const DICT: &str = "libafl-dictionary";
+    pub const TOKENS: &str = "libafl-tokens";
 }
 
 #[cfg(not(feature = "libafl_qemu"))]
@@ -28,7 +28,7 @@ mod names {
     pub const VERBOSE: &str = "verbose";
     pub const PORT: &str = "port";
     pub const STDOUT: &str = "stdout";
-    pub const DICT: &str = "dictionary";
+    pub const TOKENS: &str = "tokens";
 }
 
 /// helper function to go from a parsed cli string to a `Duration`
@@ -72,9 +72,9 @@ pub struct FuzzerOptions {
     #[clap(short = 's', long = names::STDOUT)]
     pub stdout: Option<String>,
 
-    /// paths to fuzzer dictionaries
-    #[clap(short = 'x', long = names::DICT, multiple_values = true)]
-    pub dictionaries: Vec<PathBuf>,
+    /// paths to fuzzer token files
+    #[clap(short = 'x', long = names::TOKENS, multiple_values = true)]
+    pub token_files: Vec<PathBuf>,
 }
 
 pub fn parse_args() -> FuzzerOptions {
