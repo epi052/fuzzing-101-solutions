@@ -9,6 +9,7 @@ use libafl::bolts::launcher::Launcher;
 use libafl::bolts::rands::StdRand;
 use libafl::bolts::shmem::{ShMemProvider, StdShMemProvider};
 use libafl::bolts::tuples::{tuple_list, Merge};
+use libafl::corpus::ondisk::OnDiskMetadataFormat;
 use libafl::corpus::{
     Corpus, IndexesLenTimeMinimizerCorpusScheduler, OnDiskCorpus, QueueCorpusScheduler,
 };
@@ -26,8 +27,8 @@ use libafl::{feedback_and_fast, feedback_or, Error};
 
 use libafl_qemu::elf::EasyElf;
 use libafl_qemu::{
-    edges, Emulator, MmapPerms, QemuExecutor, QemuHelper, QemuHelperTuple, SYS_exit,
-    SYS_exit_group, SYS_mmap, SYS_munmap, SYS_read, SyscallHookResult,
+    edges, Emulator, MmapPerms, QemuAsanHelper, QemuExecutor, QemuHelper, QemuHelperTuple,
+    SYS_exit, SYS_exit_group, SYS_mmap, SYS_munmap, SYS_read, SyscallHookResult,
 };
 
 /// maximum size allowed for our mmap'd input file
@@ -266,8 +267,11 @@ fn main() -> Result<(), Error> {
     // path to input corpus directory
     let corpus_dirs = fuzzer_options.corpora;
 
-    // corpus that will be evolved in memory, during fuzzing
-    let input_corpus = OnDiskCorpus::new(fuzzer_options.crashes.join("queue"))?;
+    // corpus that will be evolved in memory, during fuzzing; metadata saved in json
+    let input_corpus = OnDiskCorpus::new_save_meta(
+        fuzzer_options.crashes.join("queue"),
+        Some(OnDiskMetadataFormat::JsonPretty),
+    )?;
 
     // corpus in which we store solutions on disk so we can get them after stopping the fuzzer
     let solutions_corpus = OnDiskCorpus::new(fuzzer_options.crashes)?;
@@ -473,7 +477,8 @@ fn main() -> Result<(), Error> {
             tuple_list!(
                 edges::QemuEdgeCoverageHelper::new(),
                 QemuFilesystemBytesHelper::new(input_addr),
-                QemuGPRegisterHelper::new(&emu)
+                QemuGPRegisterHelper::new(&emu),
+                QemuAsanHelper::new(),
             ),
             tuple_list!(edges_observer, time_observer),
             &mut fuzzer,
