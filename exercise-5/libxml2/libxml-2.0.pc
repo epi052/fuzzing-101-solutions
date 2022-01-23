@@ -1,0 +1,13 @@
+prefix=/home/epi/PycharmProjects/fuzzing-101-solutions/exercise-5/build
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+modules=1
+
+Name: libXML
+Version: 2.9.4
+Description: libXML library version2.
+Requires:
+Libs: -L${libdir} -lxml2
+Libs.private:   -lz -llzma  -lm  -ldl
+Cflags: -I${includedir}/libxml2 

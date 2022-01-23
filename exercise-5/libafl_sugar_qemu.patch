@@ -1,0 +1,48 @@
+diff --git a/libafl_sugar/src/qemu.rs b/libafl_sugar/src/qemu.rs
+index 4c6bde7f..9f5995bf 100644
+--- a/libafl_sugar/src/qemu.rs
++++ b/libafl_sugar/src/qemu.rs
+@@ -4,6 +4,7 @@ use core::fmt::{self, Debug, Formatter};
+ use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
+ use typed_builder::TypedBuilder;
+ 
++use libafl::events::{EventRestarter, LlmpRestartingEventManager};
+ use libafl::{
+     bolts::{
+         current_nanos,
+@@ -137,7 +138,9 @@ where
+ 
+         let monitor = MultiMonitor::new(|s| println!("{}", s));
+ 
+-        let mut run_client = |state: Option<StdState<_, _, _, _, _>>, mut mgr, _core_id| {
++        let mut run_client = |state: Option<StdState<_, _, _, _, _>>,
++                              mut mgr: LlmpRestartingEventManager<_, _, _, _>,
++                              _core_id| {
+             // Create an observation channel using the coverage map
+             let edges = unsafe { &mut edges::EDGES_MAP };
+             let edges_counter = unsafe { &mut edges::MAX_EDGES_NUM };
+@@ -337,7 +340,15 @@ where
+ 
+                     // The order of the stages matter!
+                     let mut stages = tuple_list!(mutational);
+-                    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
++                    fuzzer.fuzz_loop_for(
++                        &mut stages,
++                        &mut executor,
++                        &mut state,
++                        &mut mgr,
++                        50_000,
++                    )?;
++                    mgr.on_restart(&mut state)?;
++                    std::process::exit(0);
+                 } else {
+                     // Setup a basic mutator
+                     let mutator = StdScheduledMutator::new(havoc_mutations());
+@@ -409,6 +420,7 @@ pub mod pybind {
+                 .output_dir(self.output_dir.clone())
+                 .broker_port(self.broker_port)
+                 .cores(&self.cores)
++                .tokens_file(PathBuf::from("xml.dict"))
+                 .harness(|buf| {
+                     Python::with_gil(|py| -> PyResult<()> {
+                         let args = (PyBytes::new(py, buf),); // TODO avoid copy
