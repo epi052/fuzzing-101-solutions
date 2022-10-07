@@ -11,7 +11,7 @@ pub fn main() {
         .cpp(false)
         // silence the compiler wrapper output, needed for some configure scripts.
         .silence(true)
-        .from_args(&args)
+        .parse_args(&args)
         .expect("Failed to parse the command line")
         .link_staticlib(&cwd, "exercisetwo")
         .add_arg("-fsanitize-coverage=trace-pc-guard")

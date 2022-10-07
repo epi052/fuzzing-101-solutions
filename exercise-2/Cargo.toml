@@ -6,10 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# commit c7512fceecfc222e0618a5c7ac1a29a3fcfeeb16
-libafl = { path = "../LibAFL/libafl" }
-libafl_cc = { path = "../LibAFL/libafl_cc" }
-libafl_targets = { path = "../LibAFL/libafl_targets" , features = ["libfuzzer", "sancov_pcguard_hitcounts", "sancov_cmplog"] }
+libafl = { version = "0.8.1" }
+libafl_cc = { version = "0.8.1" }
+libafl_targets = { version = "0.8.1", features = [
+    "libfuzzer",
+    "sancov_pcguard_hitcounts",
+    "sancov_cmplog",
+] }
 
 [lib]
 name = "exercisetwo"
