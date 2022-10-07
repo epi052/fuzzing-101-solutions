@@ -1,17 +1,15 @@
-use libafl::bolts::current_nanos;
 use libafl::bolts::rands::StdRand;
 use libafl::bolts::tuples::tuple_list;
-use libafl::corpus::{
-    Corpus, InMemoryCorpus, IndexesLenTimeMinimizerCorpusScheduler, OnDiskCorpus,
-    QueueCorpusScheduler,
-};
+use libafl::bolts::{current_nanos, AsSlice};
+use libafl::corpus::{Corpus, InMemoryCorpus, OnDiskCorpus};
 use libafl::events::{setup_restarting_mgr_std, EventConfig, EventRestarter};
 use libafl::executors::{ExitKind, InProcessExecutor, TimeoutExecutor};
-use libafl::feedbacks::{MapFeedbackState, MaxMapFeedback, TimeFeedback, TimeoutFeedback};
+use libafl::feedbacks::{MaxMapFeedback, TimeFeedback, TimeoutFeedback};
 use libafl::inputs::{BytesInput, HasTargetBytes};
 use libafl::monitors::MultiMonitor;
 use libafl::mutators::{havoc_mutations, StdScheduledMutator};
 use libafl::observers::{HitcountsMapObserver, StdMapObserver, TimeObserver};
+use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
 use libafl::state::{HasCorpus, StdState};
 use libafl::{feedback_and_fast, feedback_or, Error, Fuzzer, StdFuzzer};
@@ -59,11 +57,6 @@ fn libafl_main() -> Result<(), Error> {
     // Component: Feedback
     //
 
-    // This is the state of the data that the feedback wants to persist in the fuzzers's state. In
-    // particular, it is the cumulative map holding all the edges seen so far that is used to track
-    // edge coverage.
-    let feedback_state = MapFeedbackState::with_observer(&edges_observer);
-
     // A Feedback, in most cases, processes the information reported by one or more observers to
     // decide if the execution is interesting. This one is composed of two Feedbacks using a logical
     // OR.
@@ -72,20 +65,15 @@ fn libafl_main() -> Result<(), Error> {
     // we need to use it alongside some other Feedback that has the ability to perform said
     // classification. These two feedbacks are combined to create a boolean formula, i.e. if the
     // input triggered a new code path, OR, false.
-    let feedback = feedback_or!(
+    let mut feedback = feedback_or!(
         // New maximization map feedback (attempts to maximize the map contents) linked to the
-        // edges observer and the feedback state. This one will track indexes, but will not track
-        // novelties, i.e. new_tracking(... true, false).
-        MaxMapFeedback::new_tracking(&feedback_state, &edges_observer, true, false),
-        // Time feedback, this one does not need a feedback state, nor does it ever return true for
-        // is_interesting, However, it does keep track of testcase execution time by way of its
-        // TimeObserver
+        // edges observer. This one will track indexes, but will not track novelties,
+        // i.e. new_tracking(... true, false).
+        MaxMapFeedback::new_tracking(&edges_observer, true, false),
+        // Time feedback, this one never returns true for is_interesting, However, it does keep
+        // track of testcase execution time by way of its TimeObserver
         TimeFeedback::new_with_observer(&time_observer)
     );
-
-    // create a new map feedback state with a history map of size EDGES_MAP_SIZE which provides
-    // state about the edges feedback for timeouts
-    let objective_state = MapFeedbackState::new("timeout_edges", unsafe { EDGES_MAP.len() });
 
     // A feedback is used to choose if an input should be added to the corpus or not. In the case
     // below, we're saying that in order for a testcase's input to be added to the corpus, it must:
@@ -98,10 +86,8 @@ fn libafl_main() -> Result<(), Error> {
     // The feedback_and_fast macro combines the two feedbacks with a fast AND operation, which
     // means only enough feedback functions will be called to know whether or not the objective
     // has been met, i.e. short-circuiting logic.
-    let objective = feedback_and_fast!(
-        TimeoutFeedback::new(),
-        MaxMapFeedback::new(&objective_state, &edges_observer)
-    );
+    let mut objective =
+        feedback_and_fast!(TimeoutFeedback::new(), MaxMapFeedback::new(&edges_observer));
 
     //
     // Component: Monitor
@@ -161,8 +147,10 @@ fn libafl_main() -> Result<(), Error> {
             timeouts_corpus,
             // States of the feedbacks that store the data related to the feedbacks that should be
             // persisted in the State.
-            tuple_list!(feedback_state, objective_state),
+            &mut feedback,
+            &mut objective,
         )
+        .unwrap()
     });
 
     //
@@ -176,7 +164,7 @@ fn libafl_main() -> Result<(), Error> {
     // entries registered in the MapIndexesMetadata
     //
     // a QueueCorpusScheduler walks the corpus in a queue-like fashion
-    let scheduler = IndexesLenTimeMinimizerCorpusScheduler::new(QueueCorpusScheduler::new());
+    let scheduler = IndexesLenTimeMinimizerScheduler::new(QueueScheduler::new());
 
     //
     // Component: Fuzzer

@@ -9,9 +9,12 @@
 .idea/
 
 **/crashes/
+**/solutions/
 **/timeouts/
 **/.cur_input*
 
 LibAFL/
 AFLTriage/
 hirsute-rootfs/
+
+**/build/
