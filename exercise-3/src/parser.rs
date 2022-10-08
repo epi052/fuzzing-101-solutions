@@ -11,13 +11,17 @@ pub struct FuzzerOptions {
     #[clap(short, long, default_value = "corpus", multiple_values = true)]
     pub input: PathBuf,
 
-    /// which cores to bind, i.e. --cores 0 1 2
+    /// which cores to bind, i.e. --cores 1,2-4,6 -> clients run in cores 1,2,3,4,6
     #[clap(short, long)]
-    pub cores: Vec<usize>,
+    pub cores: String,
 
     /// target binary to execute
     #[clap(short, long, required = true, takes_value = true)]
     pub target: String,
+
+    /// debug mode
+    #[clap(short, long)]
+    pub debug: bool,
 
     /// arguments to pass to the target binary
     #[clap(
