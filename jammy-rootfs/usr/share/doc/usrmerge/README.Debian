@@ -1,0 +1,70 @@
+FAQ
+~~~
+* What is the purpose of this package?
+The usrmerge package will convert the system it is installed on to the
+everything-in-usr directories scheme, i.e. the /{bin,sbin,lib}/ directories
+become symbolic links to /usr/{bin,sbin,lib}/.
+In addition to the conversion program it provides a dpkg configuration
+file that works around the few packages that install a file in the same
+directories in / and /usr, until they will be fixed.
+
+* Will usrmerge also merge /usr/bin/ and /usr/sbin/?
+No.
+
+* Is it mandatory to install this package?
+No.
+
+* Does this require systemd?
+No.
+
+* Does this really not require systemd?
+Yes, I promise.
+
+* Does this require an initramfs?
+Only if /usr is on a standalone file system.
+
+* But I hate initramfses and I really do not want to use one!
+Maybe you only hate initramfs-tools? If you build your own custom kernel
+with static drivers for your block device and file system then you can
+mount /usr with just a 12 KB initramfs image containing
+https://github.com/chris-se/tiny-initramfs .
+
+* What are the benefits of everything-in-usr?
+Please consult the web pages listed in the "Other documentation" section
+of this file.
+
+* What are the downsides of everything-in-usr?
+If you can find any then please contact the maintainer of this package.
+
+* If I convert my system to everything-in-usr, how will I be able to
+  recover it from a failure of the /usr filesystem without the tools in /?
+This question is not relevant to everything-in-usr, because Debian has
+not supported booting without /usr being mounted for a long time anyway.
+I recommend to install the grml-rescueboot package which will not only
+allow one to recover from corruption of /usr but also of /.
+
+* Is it safe to do the live conversion of a running system?
+Almost totally safe: currently the conversion process has some races,
+but they are very small and can only be noticed if a daemon tries to
+run a program at the wrong time. I recommend to not worry about this.
+
+* The conversion program has failed with an error, now what?
+Fix the error and run it again. Repeat until no more errors are reported.
+
+* What about the new empty directories like /usr/libx32/?
+They must be created to be ready for the possible future installation of
+multilib library packages (like e.g. libc6-i386 on amd64 systems) or
+foreign multiarch library packages (e.g. libc6:amd64 on i386 systems) that
+would install files in directories like /libx32/.
+If you know that such a package will never be installed, then the
+directories and the associated symlinks can be safely deleted.
+
+Removal of this package
+~~~~~~~~~~~~~~~~~~~~~~~
+The package can be removed once the system has been converted.
+
+Other documentation
+~~~~~~~~~~~~~~~~~~~
+http://www.freedesktop.org/wiki/Software/systemd/TheCaseForTheUsrMerge
+https://fedoraproject.org/wiki/Features/UsrMove
+http://lists.busybox.net/pipermail/busybox/2010-December/074114.html
