@@ -5,7 +5,13 @@ dependencies = ["clean-cargo", "clean-build-dir"]
 [tasks.build]
 command = "true"
 args = []
-dependencies = ["build-directories", "build-cargo", "copy-project-to-build", "configure-libtiff", "build-libtiff"]
+dependencies = [
+    "build-directories",
+    "build-cargo",
+    "copy-project-to-build",
+    "configure-libtiff",
+    "build-libtiff",
+]
 
 # clean up task
 [tasks.clean-cargo]
@@ -22,7 +28,7 @@ args = ["-rf", "build/"]
 
 # build tasks
 [tasks.build-cargo]
-env = {CROSS_CC = "aarch64-linux-gnu-gcc"}
+env = { CROSS_CC = "aarch64-linux-gnu-gcc" }
 command = "cargo"
 args = ["build", "--release"]
 
@@ -32,7 +38,12 @@ args = ["-p", "corpus", "crashes", "build"]
 
 [tasks.copy-project-to-build]
 command = "cp"
-args = ["../target/release/exercise-4", "../target/release/libqemu-aarch64.so", "../target/release/libqasan.so", "build/"]
+args = [
+    "../target/release/exercise-4",
+    "../target/release/build/libafl_qemu-*/out/qemu-libafl-bridge/build/libqemu-aarch64.so",
+    "../target/release/libqasan.so",
+    "build/",
+]
 
 [tasks.configure-libtiff]
 cwd = "tiff"

@@ -1,26 +1,25 @@
-use fuzzer_options::parse_args;
-
 use std::env;
 use std::process;
 use std::process::abort;
 
+use libafl::bolts::cli::parse_args;
 use libafl::bolts::current_nanos;
 use libafl::bolts::launcher::Launcher;
 use libafl::bolts::rands::StdRand;
 use libafl::bolts::shmem::{ShMemProvider, StdShMemProvider};
 use libafl::bolts::tuples::{tuple_list, Merge};
+use libafl::bolts::AsSlice;
 use libafl::corpus::ondisk::OnDiskMetadataFormat;
-use libafl::corpus::{
-    Corpus, IndexesLenTimeMinimizerCorpusScheduler, OnDiskCorpus, QueueCorpusScheduler,
-};
+use libafl::corpus::{Corpus, OnDiskCorpus};
 use libafl::events::EventConfig;
 use libafl::executors::{ExitKind, TimeoutExecutor};
-use libafl::feedbacks::{CrashFeedback, MapFeedbackState, MaxMapFeedback, TimeFeedback};
+use libafl::feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback};
 use libafl::fuzzer::{Fuzzer, StdFuzzer};
 use libafl::inputs::{BytesInput, HasTargetBytes};
 use libafl::monitors::MultiMonitor;
 use libafl::mutators::{havoc_mutations, tokens_mutations, StdScheduledMutator, Tokens};
-use libafl::observers::{HitcountsMapObserver, ObserversTuple, TimeObserver, VariableMapObserver};
+use libafl::observers::{HitcountsMapObserver, TimeObserver, VariableMapObserver};
+use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
 use libafl::state::{HasCorpus, HasMetadata, StdState};
 use libafl::{feedback_and_fast, feedback_or, Error};
@@ -28,7 +27,8 @@ use libafl::{feedback_and_fast, feedback_or, Error};
 use libafl_qemu::elf::EasyElf;
 use libafl_qemu::{
     edges, Emulator, MmapPerms, QemuAsanHelper, QemuExecutor, QemuHelper, QemuHelperTuple,
-    SYS_exit, SYS_exit_group, SYS_mmap, SYS_munmap, SYS_read, SyscallHookResult,
+    QemuHooks, QemuInstrumentationFilter, SYS_exit, SYS_exit_group, SYS_mmap, SYS_munmap, SYS_read,
+    SyscallHookResult,
 };
 
 /// maximum size allowed for our mmap'd input file
@@ -65,10 +65,8 @@ where
     S: HasMetadata,
 {
     /// initialize QemuFilesystemBytesHelper; only called on fuzzer spawns/respawns
-    fn init<'a, H, OT, QT>(&self, executor: &QemuExecutor<'a, H, BytesInput, OT, QT, S>)
+    fn init_hooks<QT>(&self, hooks: &QemuHooks<'_, BytesInput, QT, S>)
     where
-        H: FnMut(&BytesInput) -> ExitKind,
-        OT: ObserversTuple<BytesInput, S>,
         QT: QemuHelperTuple<BytesInput, S>,
     {
         // for every `QemuHelper` passed to `QemuExecutor` via a `QemuHelperTuple`,
@@ -76,7 +74,7 @@ where
         // our syscall hook into `QemuExecutor::hook_syscalls`, which is the proper place to pass
         // our hook. The hooks on the Emulator are 'raw' hooks, and not what we're looking for in
         // this particular case
-        executor.hook_syscalls(syscall_hook::<QT, S>);
+        hooks.syscalls(syscall_hook::<QT, S>);
     }
 
     /// prepare helper for fuzz case; called before every fuzz case
@@ -156,9 +154,8 @@ impl QemuGPRegisterHelper {
 ///   fn(&Emulator, &mut QT, &mut S, sys_num: i32, u64, ...) -> SyscallHookResult
 #[allow(clippy::too_many_arguments)]
 fn syscall_hook<QT, S>(
-    emulator: &Emulator, // our instantiated Emulator
-    helpers: &mut QT,    // QemuFilesystemBytesHelper is passed in here, among others
-    _state: &mut S,
+    hooks: &mut QemuHooks<BytesInput, QT, S>, // our instantiated QemuHooks
+    _state: Option<&mut S>,
     syscall: i32, // syscall number
     x0: u64,      // registers ...
     x1: u64,
@@ -179,7 +176,8 @@ where
         //
         //   void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
         //   The address of the new mapping is returned as the result of the call.
-        let fs_helper = helpers
+        let fs_helper = hooks
+            .helpers_mut()
             .match_first_type_mut::<QemuFilesystemBytesHelper>()
             .unwrap();
 
@@ -189,7 +187,8 @@ where
         //
         //   int munmap(void *addr, size_t length);
         //   On success, munmap() returns 0.  On failure, it returns -1, and errno is set
-        let fs_helper = helpers
+        let fs_helper = hooks
+            .helpers_mut()
             .match_first_type_mut::<QemuFilesystemBytesHelper>()
             .unwrap();
 
@@ -207,7 +206,8 @@ where
         //
         //   On  success, the number of bytes read is returned (zero indicates end of file)
         //   On error, -1 is returned, and errno is set appropriately.
-        let fs_helper = helpers
+        let fs_helper = hooks
+            .helpers_mut()
             .match_first_type_mut::<QemuFilesystemBytesHelper>()
             .unwrap();
 
@@ -231,11 +231,11 @@ where
         //
         // when the iterator is dropped, all elements in the range are removed
         // from the vector
-        let drained = fs_helper.bytes.drain(..offset);
+        let drained = fs_helper.bytes.drain(..offset).as_slice().to_owned();
 
         unsafe {
             // write the requested number of bytes to the buffer sent to the read syscall
-            emulator.write_mem(x1, drained.as_slice());
+            hooks.emulator().write_mem(x1, &drained);
         }
 
         SyscallHookResult::new(Some(drained.len() as u64))
@@ -258,23 +258,23 @@ fn main() -> Result<(), Error> {
     //   broker port
     //   stdout file
     //   token files
-    let fuzzer_options = parse_args();
-
+    let mut fuzzer_options = parse_args();
+    println!("Fuzzer options: {:?}", fuzzer_options);
     //
     // Component: Corpus
     //
 
     // path to input corpus directory
-    let corpus_dirs = fuzzer_options.corpora;
+    let corpus_dirs = fuzzer_options.input.as_slice();
 
     // corpus that will be evolved in memory, during fuzzing; metadata saved in json
     let input_corpus = OnDiskCorpus::new_save_meta(
-        fuzzer_options.crashes.join("queue"),
+        fuzzer_options.output.join("queue"),
         Some(OnDiskMetadataFormat::JsonPretty),
     )?;
 
     // corpus in which we store solutions on disk so we can get them after stopping the fuzzer
-    let solutions_corpus = OnDiskCorpus::new(fuzzer_options.crashes)?;
+    let solutions_corpus = OnDiskCorpus::new(fuzzer_options.output)?;
 
     //
     // Component: Emulator
@@ -282,11 +282,10 @@ fn main() -> Result<(), Error> {
 
     env::remove_var("LD_LIBRARY_PATH");
 
-    let mut args: Vec<String> = env::args().collect();
     let mut env: Vec<(String, String)> = env::vars().collect();
 
     // create an Emulator which provides the methods necessary to interact with the emulated target
-    let emu = libafl_qemu::init_with_asan(&mut args, &mut env);
+    let emu = libafl_qemu::init_with_asan(&mut fuzzer_options.qemu_args, &mut env);
 
     // load our fuzz target from disk, the resulting `EasyElf` is used to do symbol lookups on the
     // binary. It handles address resolution in the case of PIE as well.
@@ -359,11 +358,6 @@ fn main() -> Result<(), Error> {
         // Component: Feedback
         //
 
-        // This is the state of the data that the feedback wants to persist in the fuzzer's state. In
-        // particular, it is the cumulative map holding all the edges seen so far that is used to track
-        // edge coverage.
-        let feedback_state = MapFeedbackState::with_observer(&edges_observer);
-
         // A Feedback, in most cases, processes the information reported by one or more observers to
         // decide if the execution is interesting. This one is composed of two Feedbacks using a
         // logical OR.
@@ -372,11 +366,11 @@ fn main() -> Result<(), Error> {
         // we need to use it alongside some other Feedback that has the ability to perform said
         // classification. These two feedbacks are combined to create a boolean formula, i.e. if the
         // input triggered a new code path, OR, false.
-        let feedback = feedback_or!(
+        let mut feedback = feedback_or!(
             // New maximization map feedback (attempts to maximize the map contents) linked to the
             // edges observer and the feedback state. This one will track indexes, but will not track
             // novelties, i.e. new_tracking(... true, false).
-            MaxMapFeedback::new_tracking(&feedback_state, &edges_observer, true, false),
+            MaxMapFeedback::new_tracking(&edges_observer, true, false),
             // Time feedback, this one does not need a feedback state, nor does it ever return true for
             // is_interesting, However, it does keep track of testcase execution time by way of its
             // TimeObserver
@@ -396,11 +390,8 @@ fn main() -> Result<(), Error> {
         // has been met, i.e. short-circuiting logic.
         //
         // this is essentially the same crash deduplication strategy used by afl++
-        let objective_state = MapFeedbackState::new("dedup_edges", edges::EDGES_MAP_SIZE);
-        let objective = feedback_and_fast!(
-            CrashFeedback::new(),
-            MaxMapFeedback::new(&objective_state, &edges_observer)
-        );
+        let mut objective =
+            feedback_and_fast!(CrashFeedback::new(), MaxMapFeedback::new(&edges_observer));
 
         //
         // Component: State
@@ -423,20 +414,19 @@ fn main() -> Result<(), Error> {
                 input_corpus.clone(),
                 // solutions corpus
                 solutions_corpus.clone(),
-                // States of the feedbacks that store the data related to the feedbacks that should be
-                // persisted in the State.
-                tuple_list!(feedback_state, objective_state),
+                &mut feedback,
+                &mut objective,
             )
+            .unwrap()
         });
 
         // populate tokens metadata from token files, if provided. Tokens are the LibAFL term for
         // what AFL et. al. call a Dictionary
-        if state.metadata().get::<Tokens>().is_none() && !fuzzer_options.token_files.is_empty() {
+        if state.metadata().get::<Tokens>().is_none() && !fuzzer_options.tokens.is_empty() {
             // metadata hasn't been populated with tokens yet, and we have token files that should
             // be read; populate the metadata from each token file
-            for token_file in &fuzzer_options.token_files {
-                state.add_metadata(Tokens::from_tokens_file(token_file)?);
-            }
+            let tokens = Tokens::new().add_from_files(&fuzzer_options.tokens)?;
+            state.add_metadata(tokens);
         }
 
         //
@@ -450,7 +440,7 @@ fn main() -> Result<(), Error> {
         // entries registered in the MapIndexesMetadata
         //
         // a QueueCorpusScheduler walks the corpus in a queue-like fashion
-        let scheduler = IndexesLenTimeMinimizerCorpusScheduler::new(QueueCorpusScheduler::new());
+        let scheduler = IndexesLenTimeMinimizerScheduler::new(QueueScheduler::new());
 
         //
         // Component: Fuzzer
@@ -458,6 +448,16 @@ fn main() -> Result<(), Error> {
 
         // A fuzzer with feedback, objectives, and a corpus scheduler
         let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
+
+        let mut hooks = QemuHooks::new(
+            &emu,
+            tuple_list!(
+                edges::QemuEdgeCoverageHelper::new(QemuInstrumentationFilter::None),
+                QemuFilesystemBytesHelper::new(input_addr),
+                QemuGPRegisterHelper::new(&emu),
+                QemuAsanHelper::new(QemuInstrumentationFilter::None),
+            ),
+        );
 
         //
         // Component: Executor
@@ -471,15 +471,10 @@ fn main() -> Result<(), Error> {
         //
         // additionally, each of the helpers and the emulator will be accessible at other points
         // of execution, easing emulator/input interaction/modification
+
         let executor = QemuExecutor::new(
+            &mut hooks,
             &mut harness,
-            &emu,
-            tuple_list!(
-                edges::QemuEdgeCoverageHelper::new(),
-                QemuFilesystemBytesHelper::new(input_addr),
-                QemuGPRegisterHelper::new(&emu),
-                QemuAsanHelper::new(),
-            ),
             tuple_list!(edges_observer, time_observer),
             &mut fuzzer,
             &mut state,
@@ -527,12 +522,12 @@ fn main() -> Result<(), Error> {
     // Build and run a Launcher
     match Launcher::builder()
         .shmem_provider(StdShMemProvider::new()?)
-        .broker_port(fuzzer_options.port)
+        .broker_port(fuzzer_options.broker_port)
         .configuration(EventConfig::from_build_id())
         .monitor(monitor)
         .run_client(&mut run_client)
         .cores(&fuzzer_options.cores)
-        .stdout_file(fuzzer_options.stdout.as_deref())
+        .stdout_file(Some(fuzzer_options.stdout.as_str()))
         .build()
         .launch()
     {

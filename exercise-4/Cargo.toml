@@ -2,15 +2,12 @@
 name = "exercise-4"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# libafl checked out at: 30eb1508deb874cbf91cfb0a0a644f4569a8f268
-libafl = { path = "../LibAFL/libafl/" }
-libafl_qemu = { path = "../LibAFL/libafl_qemu/", features = ["aarch64"] }
-fuzzer-options = { path = "../fuzzer-options", features = ["libafl_qemu"]}
+libafl = { version = "0.8.1", features = ["qemu_cli"] }
+libafl_qemu = { version = "0.8.1", features = ["aarch64"] }
 
 [profile.release]
 debug = true
