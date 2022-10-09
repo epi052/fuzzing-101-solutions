@@ -41,16 +41,15 @@ def build_xml(ctx, force=False):
 @task
 def build_afl(ctx, force=False):
     """compile pylibafl and install it using pip"""
-    # commit 03c020f4bdddbcef6b5cd2c50cd8f88f9b20c3b6
     pylib = "../LibAFL/bindings/pylibafl"
 
     result = ctx.run("pip freeze", hide=True)
 
-    if "pylibafl-0.7.0-cp39-cp39-linux_x86_64.whl" not in result.stdout or force:
+    if "pylibafl-0.8.1-cp310-cp310-linux_x86_64.whl" not in result.stdout or force:
         run(ctx, "maturin build --release", workdir=pylib)
         run(
             ctx,
-            "pip install --force-reinstall target/wheels/pylibafl-0.7.0-cp39-cp39-linux_x86_64.whl",
+            "pip install --force-reinstall target/wheels/pylibafl-0.8.1-cp310-cp310-linux_x86_64.whl",
             workdir=pylib,
         )
 
