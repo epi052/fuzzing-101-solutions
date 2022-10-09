@@ -2,7 +2,7 @@ use std::env;
 use std::process;
 use std::process::abort;
 
-use libafl::bolts::cli::parse_args;
+use libafl::bolts::cli;
 use libafl::bolts::current_nanos;
 use libafl::bolts::launcher::Launcher;
 use libafl::bolts::rands::StdRand;
@@ -258,8 +258,8 @@ fn main() -> Result<(), Error> {
     //   broker port
     //   stdout file
     //   token files
-    let mut fuzzer_options = parse_args();
-    println!("Fuzzer options: {:?}", fuzzer_options);
+    let mut fuzzer_options = cli::parse_args();
+
     //
     // Component: Corpus
     //
