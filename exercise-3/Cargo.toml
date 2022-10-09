@@ -9,4 +9,4 @@ edition = "2021"
 libafl = { version = "0.8.1" }
 libafl_sugar = { version = "0.8.1" }
 libafl_targets = { version = "0.8.1" }
-clap = { version = "3.0.0-beta.5", features = ["derive"] }
+clap = { version = "3.2", features = ["derive"] }
