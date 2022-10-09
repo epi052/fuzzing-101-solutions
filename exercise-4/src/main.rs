@@ -449,6 +449,11 @@ fn main() -> Result<(), Error> {
         // A fuzzer with feedback, objectives, and a corpus scheduler
         let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
+        //
+        // Component: Executor
+        //
+
+        // the QemuHooks struct wraps the emulator and all the QemuHelpers we want to use during fuzzing
         let mut hooks = QemuHooks::new(
             &emu,
             tuple_list!(
@@ -459,10 +464,6 @@ fn main() -> Result<(), Error> {
             ),
         );
 
-        //
-        // Component: Executor
-        //
-
         // Create an in-process executor backed by QEMU. The QemuExecutor wraps the
         // `InProcessExecutor`, all of the `QemuHelper`s and the `Emulator` (in addition to the
         // normal wrapped components). This gives us an executor that will execute a bunch of testcases
@@ -471,7 +472,6 @@ fn main() -> Result<(), Error> {
         //
         // additionally, each of the helpers and the emulator will be accessible at other points
         // of execution, easing emulator/input interaction/modification
-
         let executor = QemuExecutor::new(
             &mut hooks,
             &mut harness,
