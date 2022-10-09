@@ -16,6 +16,7 @@ class Fuzzer:
     output: str
     cores: list[int]
     port: int
+    num_iterations: int
 
     def run(self):
         # create a libafl_qemu Emulator, using the x86_64 version of qemu-user as its base
@@ -70,7 +71,7 @@ class Fuzzer:
             emulator.run()
 
         sugar.QemuBytesCoverageSugar(
-            self.input, self.output, self.port, self.cores
+            self.input, self.output, self.port, self.cores, iterations=self.num_iterations
         ).run(emulator, harness)
 
 
@@ -81,6 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", default="solutions")
     parser.add_argument("-c", "--cores", default=[7], nargs="+", type=int)
     parser.add_argument("-p", "--port", default=1337, type=int)
+    parser.add_argument("-n", "--num-iterations", default=50_000, type=int)
 
     parsed = parser.parse_args()
 
