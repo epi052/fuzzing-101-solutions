@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use libafl::bolts::os::Cores;
+use libafl::bolts::core_affinity::Cores;
 
 #[cfg(feature = "libafl_qemu")]
 use libafl_qemu::filter_qemu_args;
