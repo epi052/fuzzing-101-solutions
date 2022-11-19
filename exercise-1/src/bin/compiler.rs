@@ -2,7 +2,11 @@ use libafl_cc::{ClangWrapper, CompilerWrapper};
 use std::env;
 
 pub fn main() {
-    let cwd = env::current_dir().unwrap();
+    // Get current path of the compiler.
+    // This is also where the libexerciseone.a is placed.
+    let mut cwd = env::current_exe().unwrap();
+    cwd.pop();
+
     let args: Vec<String> = env::args().collect();
 
     let mut cc = ClangWrapper::new();

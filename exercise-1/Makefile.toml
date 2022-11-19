@@ -23,7 +23,6 @@ dependencies = ["afl-clean", "clean-xpdf", "build-compilers", "build-xpdf", "bui
 [tasks.build-compilers]
 script = """
 cargo build --release
-cp -f ../target/release/libexerciseone.a .
 """
 
 [tasks.build-xpdf]
