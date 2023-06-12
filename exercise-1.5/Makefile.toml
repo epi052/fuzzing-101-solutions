@@ -3,7 +3,7 @@ dependencies = ["cargo-clean", "afl-clean", "clean-xpdf"]
 
 [tasks.afl-clean]
 script = '''
-rm -rf .cur_input* timeouts fuzzer fuzzer.o libexerciseone.a
+rm -rf .cur_input* timeouts fuzzer fuzzer.o libexerciseonepointfive.a
 '''
 
 [tasks.clean-xpdf]
@@ -23,7 +23,7 @@ dependencies = ["afl-clean", "clean-xpdf", "build-compilers", "build-xpdf", "bui
 [tasks.build-compilers]
 script = """
 cargo build --release
-cp -f ../target/release/libexerciseone.a .
+cp -f ../target/release/libexerciseonepointfive.a .
 """
 
 [tasks.build-xpdf]

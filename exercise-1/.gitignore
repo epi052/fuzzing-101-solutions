@@ -1,4 +1,5 @@
-libexerciseone.a
 xpdf/config.log
 build/
 fuzzer
+xpdf/install
+xpdf/**/*.o

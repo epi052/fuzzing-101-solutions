@@ -3,7 +3,7 @@ use libafl::bolts::shmem::{ShMem, ShMemProvider, StdShMemProvider};
 use libafl::bolts::tuples::tuple_list;
 use libafl::bolts::{current_nanos, AsMutSlice};
 use libafl::corpus::{Corpus, InMemoryCorpus, OnDiskCorpus};
-use libafl::events::{EventRestarter, SimpleEventManager};
+use libafl::events::SimpleEventManager;
 use libafl::executors::{ForkserverExecutor, TimeoutForkserverExecutor};
 use libafl::feedbacks::{MaxMapFeedback, TimeFeedback, TimeoutFeedback};
 use libafl::inputs::BytesInput;
@@ -211,14 +211,7 @@ fn main() -> Result<(), Error> {
 
     let mut stages = tuple_list!(StdMutationalStage::new(mutator));
 
-    fuzzer
-        .fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 10000)
-        .unwrap();
-
-    // Since were using this fuzz_loop_for in a restarting scenario to only run for n iterations
-    // before exiting, we need to ensure we call on_restart() and pass it the state. This way, the
-    // state will be available in the next, respawned, iteration.
-    mgr.on_restart(&mut state).unwrap();
+    fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
 
     Ok(())
 }

@@ -12,5 +12,5 @@ libafl_targets = { version = "0.10.1", features = [
 ] }
 
 [lib]
-name = "exerciseone"
+name = "exerciseonepointfive"
 crate-type = ["staticlib"]

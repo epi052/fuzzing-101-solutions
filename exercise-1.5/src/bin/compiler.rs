@@ -15,7 +15,7 @@ pub fn main() {
         .silence(true)
         .parse_args(&args)
         .expect("Failed to parse the command line")
-        .link_staticlib(&cwd, "exerciseone")
+        .link_staticlib(&cwd, "exerciseonepointfive")
         .add_arg("-fsanitize-coverage=trace-pc-guard")
         .run()
         .expect("Failed to run the wrapped compiler")
