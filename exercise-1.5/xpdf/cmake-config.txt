@@ -1,0 +1,178 @@
+#========================================================================
+#
+# cmake-config.txt
+#
+# CMake script to do misc cmake config and platform-specific config.
+#
+# Modified by Ashutosh Varma <ashutoshvarma11@live.com>
+# Copyright 2015 Glyph & Cog, LLC
+#
+#========================================================================
+
+include(CheckFunctionExists)
+include(CheckCXXSourceCompiles)
+include(GNUInstallDirs)
+
+enable_language(CXX)
+
+#--- set default C/C++ compiler flags for Unix
+#    and add a 'Profiling' build mode
+if (CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+  if (CYGWIN)
+    set(PIC_FLAG "")
+  elseif (CMAKE_HOST_SYSTEM_NAME MATCHES "AIX")
+    set(PIC_FLAG "-qPIC")
+  else ()
+    set(PIC_FLAG "-fPIC")
+  endif ()
+  set(CMAKE_C_FLAGS_DEBUG "-g -O  ${PIC_FLAG}")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -O  ${PIC_FLAG}")
+  set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-g -O  ${PIC_FLAG}")
+  set(CMAKE_C_FLAGS_RELEASE "-O3 ${PIC_FLAG}")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${PIC_FLAG}")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-O2 ${PIC_FLAG}")
+  set(CMAKE_C_FLAGS_PROFILING "-g -pg -O  ${PIC_FLAG}"
+      CACHE STRING "C compiler flags for profiling mode")
+  set(CMAKE_CXX_FLAGS_PROFILING "-g -pg -O  ${PIC_FLAG}"
+      CACHE STRING "C++ compiler flags for profiling mode")
+  set(CMAKE_EXE_LINKER_FLAGS_PROFILING "-g -pg -O  ${PIC_FLAG}"
+      CACHE STRING "linker flags for profiling mode")
+  mark_as_advanced(
+    CMAKE_C_FLAGS_PROFILING
+    CMAKE_CXX_FLAGS_PROFILING
+    CMAKE_EXE_LINKER_FLAGS_PROFILING)
+  set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
+      "Choose build mode - options are: None Debug Release RelWithDebInfo MinSiz
+eRel Profiling")
+endif ()
+
+#--- set default C/C++ compiler flags for Windows
+if (WIN32)
+  foreach (var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG
+               CMAKE_C_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELEASE
+               CMAKE_C_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_MINSIZEREL
+               CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    # note: this converts /MD to /MT and /MDd to /MTd
+    string(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
+  endforeach ()
+  set(CMAKE_EXE_LINKER_FLAGS_DEBUG "/NODEFAULTLIB:libcmt ${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+  set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/NODEFAULTLIB:libcmt ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
+  foreach (var CMAKE_C_FLAGS_DEBUG
+               CMAKE_C_FLAGS_RELEASE
+               CMAKE_C_FLAGS_MINSIZEREL
+               CMAKE_C_FLAGS_RELWITHDEBINFO)
+    set(${var} "${${var}} /D_CRT_SECURE_NO_WARNINGS /wd4290 /wd4996")
+  endforeach ()
+  foreach (var CMAKE_CXX_FLAGS_DEBUG
+               CMAKE_CXX_FLAGS_RELEASE
+               CMAKE_CXX_FLAGS_MINSIZEREL
+               CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    set(${var} "${${var}} /D_CRT_SECURE_NO_WARNINGS /wd4290 /wd4996 /EHsc")
+  endforeach ()
+endif ()
+
+#--- don't set an rpath
+set(CMAKE_SKIP_RPATH FALSE)
+
+#--- miscellaneous options
+option(A4_PAPER "use A4 (instead of Letter) paper size by default for PostScript output" OFF)
+option(NO_TEXT_SELECT "do not allow text selection" OFF)
+option(OPI_SUPPORT "include support for OPI comments" OFF)
+option(MULTITHREADED "include support for multithreading" ON)
+option(USE_EXCEPTIONS "use C++ exceptions" ON)
+option(USE_FIXEDPOINT "use fixed point (instead of floating point) arithmetic" OFF)
+option(SPLASH_CMYK "include support for CMYK rasterization" OFF)
+option(NO_FONTCONFIG "disable support for libfontconfig" OFF)
+option(NO_PAPER "disable support for libpaper" OFF)
+option(SYSTEM_XPDFRC "full path for system-wide xpdfrc file" "")
+option(BUILD_TOOLS "build xpdf command line tools" OFF)
+if (SYSTEM_XPDFRC)
+  set(SYSTEM_XPDFRC_DEFINE "#define SYSTEM_XPDFRC \"${SYSTEM_XPDFRC}\"")
+else ()
+  set(SYSTEM_XPDFRC_DEFINE "/* #undef SYSTEM_XPDFRC */")
+endif ()
+if (WIN32)
+  option(XPDFWIDGET_PRINTING "include printing support in XpdfWidget" OFF)
+else ()
+  option(XPDFWIDGET_PRINTING "include printing support in XpdfWidget" ON)
+endif ()
+
+#--- check for various library functions
+check_function_exists(mkstemp HAVE_MKSTEMP)
+check_function_exists(mkstemps HAVE_MKSTEMPS)
+check_function_exists(popen HAVE_POPEN)
+check_cxx_source_compiles(
+    "#include <algorithm>
+    bool cmp(const int &x, const int &y) { return x < y; }
+    int a[100];
+    int main() { std::sort(a, a+100, &cmp); }"
+  HAVE_STD_SORT)
+
+#--- set up 64-bit file seeks
+check_function_exists(fseeko HAVE_FSEEKO)
+check_function_exists(fseek64 HAVE_FSEEK64)
+check_function_exists(_fseeki64 HAVE_FSEEKI64)
+
+#--- look for freetype2
+find_package(Freetype)
+if (FREETYPE_LIBRARY)
+  set(HAVE_FREETYPE_H TRUE)
+else ()
+  set(HAVE_FREETYPE_H FALSE)
+endif ()
+if (HAVE_FREETYPE_H)
+  set(HAVE_SPLASH TRUE)
+endif ()
+
+
+#--- look for zlib
+find_package(ZLIB)
+
+#--- look for libpng
+find_package(PNG)
+
+
+#--- look for libpaper
+if (NOT NO_PAPER)
+  find_library(PAPER_LIBRARY
+              NAMES paper libpaper
+              PATH_SUFFIXES lib64 lib
+  )
+  if (PAPER_LIBRARY)
+    set(HAVE_PAPER_H TRUE)
+  else ()
+    set(HAVE_PAPER_H FALSE)
+    set(PAPER_LIBRARY "")
+  endif ()
+else()
+  set(HAVE_PAPER_H FALSE)
+  set(PAPER_LIBRARY "")
+endif()
+
+#--- look for fontconfig
+if (NOT NO_FONTCONFIG)
+  find_library(FONTCONFIG_LIBRARY
+               NAMES fontconfig libfontconfig
+               PATH_SUFFIXES lib64 lib
+  )
+  if (FONTCONFIG_LIBRARY)
+    set(HAVE_FONTCONFIG TRUE)
+    message(STATUS "Found fontconfig")
+  else ()
+    set(HAVE_FONTCONFIG FALSE)
+    set(FONTCONFIG_LIBRARY "")
+  endif ()
+else ()
+  set(HAVE_FONTCONFIG FALSE)
+  set(FONTCONFIG_LIBRARY "")
+endif ()
+
+#--- look for pthreads
+if (MULTITHREADED)
+  find_package(Threads)
+else ()
+  set(CMAKE_THREAD_LIBS_INIT "")
+endif ()
+
+#--- create aconf.h
+configure_file("aconf.h.in" "aconf.h")

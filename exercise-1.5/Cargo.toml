@@ -1,0 +1,16 @@
+[package]
+name = "exercise-one-point-five-solution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libafl = { version = "0.10.1" }
+libafl_cc = { version = "0.10.1" }
+libafl_targets = { version = "0.10.1", features = [
+    "libfuzzer",
+    "sancov_pcguard_hitcounts",
+] }
+
+[lib]
+name = "exerciseone"
+crate-type = ["staticlib"]

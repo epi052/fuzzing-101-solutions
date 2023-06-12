@@ -634,12 +634,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "exercise-one-solution"
+name = "exercise-one-point-five-solution"
 version = "0.1.0"
 dependencies = [
  "libafl 0.10.1",
  "libafl_cc 0.10.1",
  "libafl_targets 0.10.1",
+]
+
+[[package]]
+name = "exercise-one-solution"
+version = "0.1.0"
+dependencies = [
+ "libafl 0.10.1",
 ]
 
 [[package]]

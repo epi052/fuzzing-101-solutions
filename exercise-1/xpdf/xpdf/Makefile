@@ -8,7 +8,7 @@
 
 SHELL = /bin/sh
 
-prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/built-with-lto
+prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/install
 srcdir = .
 
 
@@ -26,7 +26,7 @@ LDFLAGS =
 T1LIBS = 
 FTLIBS = 
 
-XLIBS =   -lXt  -lXext -lXpm  -lSM -lICE  -lX11 
+XLIBS =         -lX11 
 
 SPLASHLIBS = -L$(SPLASHLIBDIR) -lsplash
 
@@ -34,7 +34,7 @@ OTHERLIBS =   \
 	-L$(FOFILIBDIR) -lfofi \
 	-L$(GOOLIBDIR) -lGoo
 
-CXX = /usr/local/bin/afl-clang-lto++
+CXX = /usr/local/bin/afl-clang-fast++
 
 LIBPREFIX = lib
 EXE = 
