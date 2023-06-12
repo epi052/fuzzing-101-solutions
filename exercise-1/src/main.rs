@@ -6,7 +6,7 @@ use libafl::corpus::{Corpus, InMemoryCorpus, OnDiskCorpus};
 use libafl::events::{EventRestarter, SimpleEventManager};
 use libafl::executors::{ForkserverExecutor, TimeoutForkserverExecutor};
 use libafl::feedbacks::{MaxMapFeedback, TimeFeedback, TimeoutFeedback};
-use libafl::inputs::{BytesInput};
+use libafl::inputs::BytesInput;
 use libafl::monitors::SimpleMonitor;
 use libafl::mutators::{havoc_mutations, StdScheduledMutator};
 use libafl::observers::{HitcountsMapObserver, StdMapObserver, TimeObserver};
