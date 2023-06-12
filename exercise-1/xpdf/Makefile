@@ -10,7 +10,7 @@ SHELL = /bin/sh
 
 DESTDIR =
 
-prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/built-with-lto
+prefix = /home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/install
 exec_prefix = ${prefix}
 srcdir = .
 

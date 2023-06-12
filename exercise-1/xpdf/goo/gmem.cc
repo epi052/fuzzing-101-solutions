@@ -165,9 +165,8 @@ void *gmallocn(int nObjs, int objSize) GMEM_EXCEP {
 #if USE_EXCEPTIONS
     throw GMemException();
 #else
-    fprintf(stderr, "nObjs: %d objSize\n", nObjs, objSize);
     fprintf(stderr, "Bogus memory allocation size\n");
-    std::abort();
+    exit(1);
 #endif
   }
   return gmalloc(n);
@@ -187,10 +186,8 @@ void *greallocn(void *p, int nObjs, int objSize) GMEM_EXCEP {
 #if USE_EXCEPTIONS
     throw GMemException();
 #else
-    fprintf(stderr, "p: %p nObjs: %d objSize %d\n", p, nObjs, objSize);
     fprintf(stderr, "Bogus memory allocation size\n");
-    std::abort();
-
+    exit(1);
 #endif
   }
   return grealloc(p, n);

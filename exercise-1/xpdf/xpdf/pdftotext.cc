@@ -101,6 +101,42 @@ int main(int argc, char *argv[]) {
 
   exitCode = 99;
 
+  // parse args
+  ok = parseArgs(argDesc, &argc, argv);
+  if (!ok || argc < 2 || argc > 3 || printVersion || printHelp) {
+    fprintf(stderr, "pdftotext version %s\n", xpdfVersion);
+    fprintf(stderr, "%s\n", xpdfCopyright);
+    if (!printVersion) {
+      printUsage("pdftotext", "<PDF-file> [<text-file>]", argDesc);
+    }
+    goto err0;
+  }
+  fileName = new GString(argv[1]);
+
+  // read config file
+  globalParams = new GlobalParams(cfgFileName);
+  if (textEncName[0]) {
+    globalParams->setTextEncoding(textEncName);
+  }
+  if (textEOL[0]) {
+    if (!globalParams->setTextEOL(textEOL)) {
+      fprintf(stderr, "Bad '-eol' value on command line\n");
+    }
+  }
+  if (noPageBreaks) {
+    globalParams->setTextPageBreaks(gFalse);
+  }
+  if (quiet) {
+    globalParams->setErrQuiet(quiet);
+  }
+
+  // get mapping to output encoding
+  if (!(uMap = globalParams->getTextEncoding())) {
+    error(-1, "Couldn't get text encoding");
+    delete fileName;
+    goto err1;
+  }
+
   // open PDF file
   if (ownerPassword[0] != '\001') {
     ownerPW = new GString(ownerPassword);
@@ -193,6 +229,19 @@ int main(int argc, char *argv[]) {
       fclose(f);
     }
   }
+
+  // write text file
+  textOut = new TextOutputDev(textFileName->getCString(),
+			      physLayout, rawOrder, htmlMeta);
+  if (textOut->isOk()) {
+    doc->displayPages(textOut, firstPage, lastPage, 72, 72, 0,
+		      gFalse, gTrue, gFalse);
+  } else {
+    delete textOut;
+    exitCode = 2;
+    goto err3;
+  }
+  delete textOut;
 
   // write end of HTML file
   if (htmlMeta) {
