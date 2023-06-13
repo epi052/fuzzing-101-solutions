@@ -8,12 +8,12 @@ use libafl::feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback};
 use libafl::inputs::{BytesInput, HasTargetBytes};
 use libafl::monitors::MultiMonitor;
 use libafl::mutators::{havoc_mutations, StdScheduledMutator};
-use libafl::observers::{HitcountsMapObserver, StdMapObserver, TimeObserver};
+use libafl::observers::{HitcountsMapObserver, TimeObserver};
 use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
 use libafl::state::{HasCorpus, StdState};
 use libafl::{feedback_and_fast, feedback_or, Error, Fuzzer, StdFuzzer};
-use libafl_targets::{libfuzzer_test_one_input, EDGES_MAP, MAX_EDGES_NUM};
+use libafl_targets::{libfuzzer_test_one_input, std_edges_map_observer};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -45,8 +45,7 @@ fn libafl_main() -> Result<(), Error> {
     // further explanation from toka: the edges map pointed by __AFL_SHM_ID is inserted by
     // afl-clang-fast, if you use afl-clang-fast, you can use __AFL_SHM_ID to get the ptr to the
     // map, but if you use libafl-cc which uses a sancov backend, you can use EDGES_MAP.
-    let edges = unsafe { &mut EDGES_MAP[0..MAX_EDGES_NUM] };
-    let edges_observer = HitcountsMapObserver::new(StdMapObserver::new("edges", edges));
+    let edges_observer = HitcountsMapObserver::new(unsafe { std_edges_map_observer("edges") });
 
     // Create an observation channel to keep track of the execution time and previous runtime
     let time_observer = TimeObserver::new("time");
@@ -66,12 +65,12 @@ fn libafl_main() -> Result<(), Error> {
     let mut feedback = feedback_or!(
         // New maximization map feedback (attempts to maximize the map contents) linked to the
         // edges observer and the feedback state. This one will track indexes, but will not track
-        // novelties, i.e. new_tracking(... true, false).
-        MaxMapFeedback::new_tracking(&edges_observer, true, false),
+        // novelties, i.e. tracking(... true, false).
+        MaxMapFeedback::tracking(&edges_observer, true, false),
         // Time feedback, this one does not need a feedback state, nor does it ever return true for
         // is_interesting, However, it does keep track of testcase execution time by way of its
         // TimeObserver
-        TimeFeedback::new_with_observer(&time_observer)
+        TimeFeedback::with_observer(&time_observer)
     );
 
     // A feedback is used to choose if an input should be added to the corpus or not. In the case

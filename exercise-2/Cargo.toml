@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libafl = { version = "0.8.1" }
-libafl_cc = { version = "0.8.1" }
-libafl_targets = { version = "0.8.1", features = [
+libafl = { version = "0.10.1" }
+libafl_cc = { version = "0.10.1" }
+libafl_targets = { version = "0.10.1", features = [
     "libfuzzer",
     "sancov_pcguard_hitcounts",
     "sancov_cmplog",
