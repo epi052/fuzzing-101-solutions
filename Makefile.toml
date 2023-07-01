@@ -1,3 +1,9 @@
 [tasks.build]
 command = ""
 args = []
+
+[tasks.clippy]
+clear = true
+script = """
+cargo clippy --all-targets --all-features -- -D warnings
+"""

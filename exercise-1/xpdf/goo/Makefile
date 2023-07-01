@@ -14,8 +14,8 @@ srcdir = .
 CFLAGS = -g -O2 -DHAVE_CONFIG_H -I.. -I$(srcdir)
 CXXFLAGS = -g -O2 -DHAVE_CONFIG_H -I.. -I$(srcdir)
 
-CC = /usr/local/bin/afl-clang-lto
-CXX = /usr/local/bin/afl-clang-lto++
+CC = /usr/local/bin/afl-clang-fast
+CXX = /usr/local/bin/afl-clang-fast++
 AR = ar rc
 RANLIB = ranlib
 

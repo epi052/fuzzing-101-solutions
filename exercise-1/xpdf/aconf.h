@@ -53,7 +53,7 @@
 /*
  * Full path for the system-wide xpdfrc file.
  */
-#define SYSTEM_XPDFRC "/home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/built-with-lto/etc/xpdfrc"
+#define SYSTEM_XPDFRC "/home/epi/PycharmProjects/fuzzing-101-solutions/exercise-1/xpdf/install/etc/xpdfrc"
 
 /*
  * Various include files and functions.
@@ -64,23 +64,23 @@
 /* #undef HAVE_NDIR_H */
 /* #undef HAVE_SYS_SELECT_H */
 /* #undef HAVE_SYS_BSDTYPES_H */
-#define HAVE_STRINGS_H 1
+/* #undef HAVE_STRINGS_H */
 /* #undef HAVE_BSTRING_H */
 #define HAVE_POPEN 1
 #define HAVE_MKSTEMP 1
 #define HAVE_MKSTEMPS 1
 /* #undef SELECT_TAKES_INT */
 #define HAVE_FSEEKO 1
-#define HAVE_FSEEK64 1
+/* #undef HAVE_FSEEK64 */
 /* #undef _FILE_OFFSET_BITS */
 /* #undef _LARGE_FILES */
 /* #undef _LARGEFILE_SOURCE */
-#define HAVE_XTAPPSETEXITFLAG 1
+/* #undef HAVE_XTAPPSETEXITFLAG */
 
 /*
  * This is defined if using libXpm.
  */
-#define HAVE_X11_XPM_H 1
+/* #undef HAVE_X11_XPM_H */
 
 /*
  * This is defined if using t1lib.

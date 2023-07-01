@@ -2,18 +2,7 @@
 name = "exercise-one-solution"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-# commit 23f02dae12bfa49dbcb5157aee6e0c6ddaeddcd0
-libafl = { version = "0.8.1" }
-libafl_cc = { version = "0.8.1" }
-libafl_targets = { version = "0.8.1", features = [
-    "libfuzzer",
-    "sancov_pcguard_hitcounts",
-] }
-clap = "3.2"
-
-[lib]
-name = "exerciseone"
-crate-type = ["staticlib"]
+libafl = { version = "0.10.1" }

@@ -77,9 +77,6 @@ static ArgDesc argDesc[] = {
   {NULL}
 };
 
-// The following line is needed for shared memeory testcase fuzzing
-__AFL_FUZZ_INIT();
-
 int main(int argc, char *argv[]) {
   PDFDoc *doc;
   GString *fileName;
