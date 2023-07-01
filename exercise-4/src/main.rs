@@ -1,3 +1,5 @@
+use core::ptr::addr_of_mut;
+
 use std::env;
 use std::process;
 use std::process::abort;
@@ -21,9 +23,12 @@ use libafl::mutators::{havoc_mutations, tokens_mutations, StdScheduledMutator, T
 use libafl::observers::{HitcountsMapObserver, TimeObserver, VariableMapObserver};
 use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
-use libafl::state::{HasCorpus, HasMetadata, StdState};
+use libafl::state::{HasCorpus, HasMetadata, StdState, UsesState};
 use libafl::{feedback_and_fast, feedback_or, Error};
 
+use libafl::prelude::UsesInput;
+use libafl_qemu::asan::QemuAsanOptions;
+use libafl_qemu::edges::{edges_map_mut_slice, QemuEdgeCoverageHelper, MAX_EDGES_NUM};
 use libafl_qemu::elf::EasyElf;
 use libafl_qemu::{
     edges, Emulator, MmapPerms, QemuAsanHelper, QemuExecutor, QemuHelper, QemuHelperTuple,
@@ -60,25 +65,25 @@ impl QemuFilesystemBytesHelper {
 }
 
 /// implement the QemuHelper trait for QemuFilesystemBytesHelper
-impl<S> QemuHelper<BytesInput, S> for QemuFilesystemBytesHelper
+impl<UI> QemuHelper<UI> for QemuFilesystemBytesHelper
 where
-    S: HasMetadata,
+    UI: UsesInput<Input = BytesInput>,
 {
     /// initialize QemuFilesystemBytesHelper; only called on fuzzer spawns/respawns
-    fn init_hooks<QT>(&self, hooks: &QemuHooks<'_, BytesInput, QT, S>)
+    fn init_hooks<QT>(&self, hooks: &QemuHooks<'_, QT, UI>)
     where
-        QT: QemuHelperTuple<BytesInput, S>,
+        QT: QemuHelperTuple<UI>,
     {
         // for every `QemuHelper` passed to `QemuExecutor` via a `QemuHelperTuple`,
         // `QemuHelper::init` is called by `QemuExecutor::new`. we'll use the call to init to pass
         // our syscall hook into `QemuExecutor::hook_syscalls`, which is the proper place to pass
         // our hook. The hooks on the Emulator are 'raw' hooks, and not what we're looking for in
         // this particular case
-        hooks.syscalls(syscall_hook::<QT, S>);
+        hooks.syscalls(syscall_hook::<QT, UI>);
     }
 
     /// prepare helper for fuzz case; called before every fuzz case
-    fn pre_exec(&mut self, _emulator: &Emulator, input: &BytesInput) {
+    fn pre_exec(&mut self, _emulator: &Emulator, input: &<UI as UsesInput>::Input) {
         // similar to `QemuHelper::init`, `QemuHelper::pre_exec` is called via a `QemuHelperTuple`
         // and each `QemuHelper` in the tuple can expect to have pre_exec called. The flow for
         // `QemuExecutor` is (basically) `pre_exec_all` => `run_target` => `post_exec_all`. We'll
@@ -106,12 +111,12 @@ struct QemuGPRegisterHelper {
 }
 
 /// implement the QemuHelper trait for QemuGPRegisterHelper
-impl<S> QemuHelper<BytesInput, S> for QemuGPRegisterHelper
+impl<UI> QemuHelper<UI> for QemuGPRegisterHelper
 where
-    S: HasMetadata,
+    UI: UsesInput<Input = BytesInput>,
 {
     /// prepare helper for fuzz case; called before every fuzz case
-    fn pre_exec(&mut self, emulator: &Emulator, _input: &BytesInput) {
+    fn pre_exec(&mut self, emulator: &Emulator, _input: &<UI as UsesInput>::Input) {
         self.restore(emulator);
     }
 }
@@ -153,9 +158,9 @@ impl QemuGPRegisterHelper {
 /// hook signature where ... are add'l u64's
 ///   fn(&Emulator, &mut QT, &mut S, sys_num: i32, u64, ...) -> SyscallHookResult
 #[allow(clippy::too_many_arguments)]
-fn syscall_hook<QT, S>(
-    hooks: &mut QemuHooks<BytesInput, QT, S>, // our instantiated QemuHooks
-    _state: Option<&mut S>,
+fn syscall_hook<QT, UI>(
+    hooks: &mut QemuHooks<QT, UI>, // our instantiated QemuHooks
+    _state: Option<&mut UI>,
     syscall: i32, // syscall number
     x0: u64,      // registers ...
     x1: u64,
@@ -167,7 +172,8 @@ fn syscall_hook<QT, S>(
     _: u64,
 ) -> SyscallHookResult
 where
-    QT: QemuHelperTuple<BytesInput, S>,
+    QT: QemuHelperTuple<UI>,
+    UI: UsesInput,
 {
     let syscall = syscall as i64;
 
@@ -268,9 +274,9 @@ fn main() -> Result<(), Error> {
     let corpus_dirs = fuzzer_options.input.as_slice();
 
     // corpus that will be evolved in memory, during fuzzing; metadata saved in json
-    let input_corpus = OnDiskCorpus::new_save_meta(
+    let input_corpus = OnDiskCorpus::with_meta_format(
         fuzzer_options.output.join("queue"),
-        Some(OnDiskMetadataFormat::JsonPretty),
+        OnDiskMetadataFormat::JsonPretty,
     )?;
 
     // corpus in which we store solutions on disk so we can get them after stopping the fuzzer
@@ -285,7 +291,7 @@ fn main() -> Result<(), Error> {
     let mut env: Vec<(String, String)> = env::vars().collect();
 
     // create an Emulator which provides the methods necessary to interact with the emulated target
-    let emu = libafl_qemu::init_with_asan(&mut fuzzer_options.qemu_args, &mut env);
+    let emu = libafl_qemu::init_with_asan(&mut fuzzer_options.qemu_args, &mut env)?;
 
     // load our fuzz target from disk, the resulting `EasyElf` is used to do symbol lookups on the
     // binary. It handles address resolution in the case of PIE as well.
@@ -346,10 +352,14 @@ fn main() -> Result<(), Error> {
         //
         // the `libafl_qemu::edges` module re-exports the same `EDGES_MAP` and `MAX_EDGES_NUM`
         // from `libafl_targets`, meaning we're using the sancov backend for coverage
-        let edges = unsafe { &mut edges::EDGES_MAP };
-        let edges_size = unsafe { &mut edges::MAX_EDGES_NUM };
-        let edges_observer =
-            HitcountsMapObserver::new(VariableMapObserver::new("edges", edges, edges_size));
+        let var_map_observer = unsafe {
+            VariableMapObserver::from_mut_slice(
+                "edges",
+                edges_map_mut_slice(),
+                addr_of_mut!(MAX_EDGES_NUM),
+            )
+        };
+        let edges_observer = HitcountsMapObserver::new(var_map_observer);
 
         // Create an observation channel to keep track of the execution time and previous runtime
         let time_observer = TimeObserver::new("time");
@@ -370,11 +380,11 @@ fn main() -> Result<(), Error> {
             // New maximization map feedback (attempts to maximize the map contents) linked to the
             // edges observer and the feedback state. This one will track indexes, but will not track
             // novelties, i.e. new_tracking(... true, false).
-            MaxMapFeedback::new_tracking(&edges_observer, true, false),
+            MaxMapFeedback::tracking(&edges_observer, true, false),
             // Time feedback, this one does not need a feedback state, nor does it ever return true for
             // is_interesting, However, it does keep track of testcase execution time by way of its
             // TimeObserver
-            TimeFeedback::new_with_observer(&time_observer)
+            TimeFeedback::with_observer(&time_observer)
         );
 
         // A feedback, when used as an Objective, determines if an input should be added to the
@@ -422,7 +432,7 @@ fn main() -> Result<(), Error> {
 
         // populate tokens metadata from token files, if provided. Tokens are the LibAFL term for
         // what AFL et. al. call a Dictionary
-        if state.metadata().get::<Tokens>().is_none() && !fuzzer_options.tokens.is_empty() {
+        if state.metadata_map().get::<Tokens>().is_none() && !fuzzer_options.tokens.is_empty() {
             // metadata hasn't been populated with tokens yet, and we have token files that should
             // be read; populate the metadata from each token file
             let tokens = Tokens::new().add_from_files(&fuzzer_options.tokens)?;
@@ -460,7 +470,7 @@ fn main() -> Result<(), Error> {
                 edges::QemuEdgeCoverageHelper::new(QemuInstrumentationFilter::None),
                 QemuFilesystemBytesHelper::new(input_addr),
                 QemuGPRegisterHelper::new(&emu),
-                QemuAsanHelper::new(QemuInstrumentationFilter::None),
+                QemuAsanHelper::new(QemuInstrumentationFilter::None, QemuAsanOptions::None),
             ),
         );
 
