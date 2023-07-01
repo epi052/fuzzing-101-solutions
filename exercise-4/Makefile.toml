@@ -40,7 +40,7 @@ args = ["-p", "corpus", "crashes", "build"]
 command = "cp"
 args = [
     "../target/release/exercise-4",
-    "../target/release/build/libafl_qemu-*/out/qemu-libafl-bridge/build/libqemu-aarch64.so",
+    "../target/release/qemu-libafl-bridge/build/libqemu-aarch64.so",
     "../target/release/libqasan.so",
     "build/",
 ]
