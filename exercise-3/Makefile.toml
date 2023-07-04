@@ -1,11 +1,22 @@
 # composite tasks
 [tasks.clean]
-dependencies = ["clean-cargo", "clean-libpcap", "clean-tcpdump", "clean-build-dir"]
+dependencies = [
+    "clean-cargo",
+    "clean-libpcap",
+    "clean-tcpdump",
+    "clean-build-dir",
+]
 
 [tasks.build]
 command = ""
 args = []
-dependencies = ["clean", "build-cargo", "copy-project-to-build", "build-libpcap", "build-tcpdump"]
+dependencies = [
+    "clean",
+    "build-cargo",
+    "copy-project-to-build",
+    "build-libpcap",
+    "build-tcpdump",
+]
 
 # clean up tasks
 [tasks.clean-cargo]
@@ -37,7 +48,7 @@ sudo setcap cap_sys_admin+epi build/exercise-3
 """
 
 [tasks.build-libpcap]
-env = { "CC" = "afl-clang-lto", "LLVM_CONFIG" = "llvm-config-12", "AFL_MAP_SIZE" = "80642", "AFL_USE_ASAN" = "1" }
+env = { "CC" = "afl-clang-lto", "LLVM_CONFIG" = "llvm-config-15", "AFL_MAP_SIZE" = "86217", "AFL_USE_ASAN" = "1" }
 cwd = "libpcap"
 script = """
 ./configure --enable-shared=no --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
@@ -58,9 +69,8 @@ mkdir -p ../solutions
 
 [tasks.build-tcpdump.env]
 "CC" = "afl-clang-lto"
-"LLVM_CONFIG" = "llvm-config-12"
+"LLVM_CONFIG" = "llvm-config-15"
 "AFL_USE_ASAN" = "1"
-"AFL_MAP_SIZE" = "80642"
+"AFL_MAP_SIZE" = "86217"
 "CFLAGS" = "-I${CARGO_MAKE_WORKING_DIRECTORY}/../build/include/"
 "LDFLAGS" = "-L${CARGO_MAKE_WORKING_DIRECTORY}/../build/lib/"
-

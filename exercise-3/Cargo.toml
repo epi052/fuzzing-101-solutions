@@ -2,11 +2,12 @@
 name = "exercise-3"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libafl = { version = "0.8.1" }
-libafl_sugar = { version = "0.8.1" }
-libafl_targets = { version = "0.8.1" }
+libafl = { version = "0.10.1" }
+libafl_sugar = { version = "0.10.1" }
+libafl_targets = { version = "0.10.1" }
 clap = { version = "3.2", features = ["derive"] }
