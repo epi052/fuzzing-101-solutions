@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct FuzzerOptions {
     /// output solutions directory
     #[clap(short, long, default_value = "solutions")]
