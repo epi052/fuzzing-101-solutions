@@ -7,7 +7,7 @@ fn main() {
     let parsed_opts = parser::parse_args();
     let cores = Cores::from_cmdline(&parsed_opts.cores).expect("Failed to parse cores");
 
-    ForkserverBytesCoverageSugar::<80642>::builder()
+    ForkserverBytesCoverageSugar::<86217>::builder()
         .input_dirs(&[parsed_opts.input])
         .output_dir(parsed_opts.output)
         .cores(&cores)
