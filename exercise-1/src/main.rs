@@ -1,19 +1,19 @@
-use libafl::bolts::rands::StdRand;
-use libafl::bolts::shmem::{ShMem, ShMemProvider, StdShMemProvider};
-use libafl::bolts::tuples::tuple_list;
-use libafl::bolts::{current_nanos, AsMutSlice};
 use libafl::corpus::{Corpus, InMemoryCorpus, OnDiskCorpus};
 use libafl::events::SimpleEventManager;
-use libafl::executors::{ForkserverExecutor, TimeoutForkserverExecutor};
+use libafl::executors::ForkserverExecutor;
 use libafl::feedbacks::{MaxMapFeedback, TimeFeedback, TimeoutFeedback};
 use libafl::inputs::BytesInput;
 use libafl::monitors::SimpleMonitor;
 use libafl::mutators::{havoc_mutations, StdScheduledMutator};
-use libafl::observers::{HitcountsMapObserver, StdMapObserver, TimeObserver};
+use libafl::observers::{CanTrack, HitcountsMapObserver, StdMapObserver, TimeObserver};
 use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
 use libafl::state::{HasCorpus, StdState};
 use libafl::{feedback_and_fast, feedback_or, Error, Fuzzer, StdFuzzer};
+use libafl_bolts::rands::StdRand;
+use libafl_bolts::shmem::{ShMem, ShMemProvider, StdShMemProvider};
+use libafl_bolts::tuples::tuple_list;
+use libafl_bolts::{current_nanos, AsSliceMut};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -59,11 +59,12 @@ fn main() -> Result<(), Error> {
 
     // let the forkserver know the shmid
     shmem.write_to_env("__AFL_SHM_ID")?;
-    let shmem_buf = shmem.as_mut_slice();
+    let shmem_buf = shmem.as_slice_mut();
 
     // Create an observation channel using the signals map
-    let edges_observer =
-        unsafe { HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)) };
+    let edges_observer = unsafe {
+        HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmem_buf)).track_indices()
+    };
 
     //
     // Component: Feedback
@@ -80,11 +81,10 @@ fn main() -> Result<(), Error> {
     let mut feedback = feedback_or!(
         // New maximization map feedback (attempts to maximize the map contents) linked to the
         // edges observer. This one will track indexes, but will not track novelties,
-        // i.e. new_tracking(... true, false).
-        MaxMapFeedback::tracking(&edges_observer, true, false),
+        MaxMapFeedback::new(&edges_observer),
         // Time feedback, this one never returns true for is_interesting, However, it does keep
         // track of testcase execution time by way of its TimeObserver
-        TimeFeedback::with_observer(&time_observer)
+        TimeFeedback::new(&time_observer)
     );
 
     // A feedback is used to choose if an input should be added to the corpus or not. In the case
@@ -156,7 +156,7 @@ fn main() -> Result<(), Error> {
     // entries registered in the MapIndexesMetadata
     //
     // a QueueCorpusScheduler walks the corpus in a queue-like fashion
-    let scheduler = IndexesLenTimeMinimizerScheduler::new(QueueScheduler::new());
+    let scheduler = IndexesLenTimeMinimizerScheduler::new(&edges_observer, QueueScheduler::new());
 
     //
     // Component: Fuzzer
@@ -173,16 +173,12 @@ fn main() -> Result<(), Error> {
     // timeout before each run. This gives us an executor that will execute a bunch of testcases
     // within the same process, eliminating a lot of the overhead associated with a fork/exec or
     // forkserver execution model.
-    let fork_server = ForkserverExecutor::builder()
+    let mut executor = ForkserverExecutor::builder()
         .program("./xpdf/install/bin/pdftotext")
+        .timeout(Duration::from_secs(5))
         .parse_afl_cmdline(["@@"])
         .coverage_map_size(MAP_SIZE)
         .build(tuple_list!(time_observer, edges_observer))?;
-
-    let timeout = Duration::from_secs(5);
-
-    // wrap the fork server executor and its associated timeout limit
-    let mut executor = TimeoutForkserverExecutor::new(fork_server, timeout)?;
 
     // In case the corpus is empty (i.e. on first run), load existing test cases from on-disk
     // corpus
