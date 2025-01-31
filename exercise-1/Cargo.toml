@@ -5,4 +5,5 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-libafl = { version = "0.10.1" }
+libafl = { version = "0.15.0" }
+libafl_bolts = { version = "0.15.0" }
