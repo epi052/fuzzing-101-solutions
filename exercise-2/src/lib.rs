@@ -1,21 +1,22 @@
-use libafl::bolts::rands::StdRand;
-use libafl::bolts::tuples::tuple_list;
-use libafl::bolts::{current_nanos, AsSlice};
+use std::path::PathBuf;
+use std::time::Duration;
+
 use libafl::corpus::{Corpus, InMemoryCorpus, OnDiskCorpus};
 use libafl::events::{setup_restarting_mgr_std, EventConfig, EventRestarter};
-use libafl::executors::{ExitKind, InProcessExecutor, TimeoutExecutor};
+use libafl::executors::{ExitKind, InProcessExecutor};
 use libafl::feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback};
 use libafl::inputs::{BytesInput, HasTargetBytes};
 use libafl::monitors::MultiMonitor;
 use libafl::mutators::{havoc_mutations, StdScheduledMutator};
-use libafl::observers::{HitcountsMapObserver, TimeObserver};
+use libafl::observers::{CanTrack, HitcountsMapObserver, TimeObserver};
 use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
 use libafl::state::{HasCorpus, StdState};
 use libafl::{feedback_and_fast, feedback_or, Error, Fuzzer, StdFuzzer};
+use libafl_bolts::rands::StdRand;
+use libafl_bolts::tuples::tuple_list;
+use libafl_bolts::{current_nanos, AsSlice};
 use libafl_targets::{libfuzzer_test_one_input, std_edges_map_observer};
-use std::path::PathBuf;
-use std::time::Duration;
 
 #[no_mangle]
 fn libafl_main() -> Result<(), Error> {
@@ -45,7 +46,8 @@ fn libafl_main() -> Result<(), Error> {
     // further explanation from toka: the edges map pointed by __AFL_SHM_ID is inserted by
     // afl-clang-fast, if you use afl-clang-fast, you can use __AFL_SHM_ID to get the ptr to the
     // map, but if you use libafl-cc which uses a sancov backend, you can use EDGES_MAP.
-    let edges_observer = HitcountsMapObserver::new(unsafe { std_edges_map_observer("edges") });
+    let edges_observer =
+        HitcountsMapObserver::new(unsafe { std_edges_map_observer("edges") }).track_indices();
 
     // Create an observation channel to keep track of the execution time and previous runtime
     let time_observer = TimeObserver::new("time");
@@ -66,11 +68,11 @@ fn libafl_main() -> Result<(), Error> {
         // New maximization map feedback (attempts to maximize the map contents) linked to the
         // edges observer and the feedback state. This one will track indexes, but will not track
         // novelties, i.e. tracking(... true, false).
-        MaxMapFeedback::tracking(&edges_observer, true, false),
+        MaxMapFeedback::new(&edges_observer),
         // Time feedback, this one does not need a feedback state, nor does it ever return true for
         // is_interesting, However, it does keep track of testcase execution time by way of its
         // TimeObserver
-        TimeFeedback::with_observer(&time_observer)
+        TimeFeedback::new(&time_observer)
     );
 
     // A feedback is used to choose if an input should be added to the corpus or not. In the case
@@ -162,7 +164,7 @@ fn libafl_main() -> Result<(), Error> {
     // entries registered in the MapIndexesMetadata
     //
     // a QueueCorpusScheduler walks the corpus in a queue-like fashion
-    let scheduler = IndexesLenTimeMinimizerScheduler::new(QueueScheduler::new());
+    let scheduler = IndexesLenTimeMinimizerScheduler::new(&edges_observer, QueueScheduler::new());
 
     //
     // Component: Fuzzer
@@ -178,7 +180,7 @@ fn libafl_main() -> Result<(), Error> {
     let mut harness = |input: &BytesInput| {
         let target = input.target_bytes();
         let buffer = target.as_slice();
-        libfuzzer_test_one_input(buffer);
+        unsafe { libfuzzer_test_one_input(buffer) };
         ExitKind::Ok
     };
 
@@ -190,25 +192,21 @@ fn libafl_main() -> Result<(), Error> {
     // timeout before each run. This gives us an executor that will execute a bunch of testcases
     // within the same process, eliminating a lot of the overhead associated with a fork/exec or
     // forkserver execution model.
-    let in_proc_executor = InProcessExecutor::new(
+    let mut in_proc_executor = InProcessExecutor::with_timeout(
         &mut harness,
         tuple_list!(edges_observer, time_observer),
         &mut fuzzer,
         &mut state,
         &mut mgr,
+        Duration::from_millis(5000),
     )
     .unwrap();
-
-    let timeout = Duration::from_millis(5000);
-
-    // wrap in process executor with a timeout
-    let mut executor = TimeoutExecutor::new(in_proc_executor, timeout);
 
     // In case the corpus is empty (i.e. on first run), load existing test cases from on-disk
     // corpus
     if state.corpus().count() < 1 {
         state
-            .load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &corpus_dirs)
+            .load_initial_inputs(&mut fuzzer, &mut in_proc_executor, &mut mgr, &corpus_dirs)
             .unwrap_or_else(|err| {
                 panic!(
                     "Failed to load initial corpus at {:?}: {:?}",
@@ -232,7 +230,13 @@ fn libafl_main() -> Result<(), Error> {
     let mut stages = tuple_list!(StdMutationalStage::new(mutator));
 
     fuzzer
-        .fuzz_loop_for(&mut stages, &mut executor, &mut state, &mut mgr, 1000)
+        .fuzz_loop_for(
+            &mut stages,
+            &mut in_proc_executor,
+            &mut state,
+            &mut mgr,
+            1000,
+        )
         .unwrap();
 
     // Since were using this fuzz_loop_for in a restarting scenario to only run for n iterations
