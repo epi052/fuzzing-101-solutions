@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-libafl = { version = "0.10.1" }
-libafl_cc = { version = "0.10.1" }
-libafl_targets = { version = "0.10.1", features = [
+libafl = { version = "0.15.0" }
+libafl_cc = { version = "0.15.0" }
+libafl_targets = { version = "0.15.0", features = [
     "libfuzzer",
     "sancov_pcguard_hitcounts",
 ] }
+libafl_bolts = { version = "0.15.0" }
 
 [lib]
 name = "exerciseonepointfive"
