@@ -67,8 +67,7 @@ fn libafl_main() -> Result<(), Error> {
     // input triggered a new code path, OR, false.
     let mut feedback = feedback_or!(
         // New maximization map feedback (attempts to maximize the map contents) linked to the
-        // edges observer. This one will track indexes, but will not track novelties,
-        // i.e. new_tracking(... true, false).
+        // edges observer.
         MaxMapFeedback::new(&edges_observer),
         // Time feedback, this one never returns true for is_interesting, However, it does keep
         // track of testcase execution time by way of its TimeObserver
