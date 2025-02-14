@@ -48,7 +48,7 @@ sudo setcap cap_sys_admin+epi build/exercise-3
 """
 
 [tasks.build-libpcap]
-env = { "CC" = "afl-clang-lto", "LLVM_CONFIG" = "llvm-config-15", "AFL_MAP_SIZE" = "86217", "AFL_USE_ASAN" = "1" }
+env = { "CC" = "afl-clang-lto", "LLVM_CONFIG" = "llvm-config-19", "AFL_MAP_SIZE" = "98816", "AFL_USE_ASAN" = "1" }
 cwd = "libpcap"
 script = """
 ./configure --enable-shared=no --prefix="${CARGO_MAKE_WORKING_DIRECTORY}/../build/"
@@ -69,8 +69,8 @@ mkdir -p ../solutions
 
 [tasks.build-tcpdump.env]
 "CC" = "afl-clang-lto"
-"LLVM_CONFIG" = "llvm-config-15"
+"LLVM_CONFIG" = "llvm-config-19"
 "AFL_USE_ASAN" = "1"
-"AFL_MAP_SIZE" = "86217"
+"AFL_MAP_SIZE" = "98816"
 "CFLAGS" = "-I${CARGO_MAKE_WORKING_DIRECTORY}/../build/include/"
 "LDFLAGS" = "-L${CARGO_MAKE_WORKING_DIRECTORY}/../build/lib/"

@@ -1,0 +1,22 @@
+diff --git a/libafl_sugar/src/forkserver.rs b/libafl_sugar/src/forkserver.rs
+index 2e285897..e8912469 100644
+--- a/libafl_sugar/src/forkserver.rs
++++ b/libafl_sugar/src/forkserver.rs
+@@ -83,7 +83,7 @@ impl ForkserverBytesCoverageSugar<'_> {
+         // a large initial map size that should be enough
+         // to house all potential coverage maps for our targets
+         // (we will eventually reduce the used size according to the actual map)
+-        const MAP_SIZE: usize = 65_536;
++        const MAP_SIZE: usize = 98_816;
+ 
+         let conf = match self.configuration.as_ref() {
+             Some(name) => EventConfig::from_name(name),
+@@ -298,7 +298,7 @@ impl ForkserverBytesCoverageSugar<'_> {
+             .remote_broker_addr(self.remote_broker_addr)
+             .time_ref(Some(time_ref));
+         #[cfg(unix)]
+-        let launcher = launcher.stdout_file(Some("/dev/null"));
++        let launcher = launcher.stdout_file(Some("/dev/stdout"));
+         match launcher.build().launch() {
+             Ok(()) => (),
+             Err(Error::ShuttingDown) => log::info!("\nFuzzing stopped by user. Good Bye."),

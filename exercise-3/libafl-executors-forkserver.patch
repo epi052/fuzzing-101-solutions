@@ -1,30 +1,28 @@
 diff --git a/libafl/src/executors/forkserver.rs b/libafl/src/executors/forkserver.rs
-index 2340b0c..fec3c77 100644
+index 7aa72618..b747e2d6 100644
 --- a/libafl/src/executors/forkserver.rs
 +++ b/libafl/src/executors/forkserver.rs
-@@ -372,9 +372,24 @@ where
-                     .copy_from_slice(input.target_bytes().as_slice());
-             }
-             None => {
-+                let mut immutable_header = vec![
-+                    // pcap header
-+                    0xd4, 0xc3, 0xb2, 0xa1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+                    0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xe4, 0x00, 0x00, 0x00, 0xb7, 0xc8,
-+                    0x9e, 0x61, 0x3b, 0x35, 0x0e, 0x00, 0x08, 0x01, 0x00, 0x00, 0x08, 0x01, 0x00,
-+                    0x00, // ip header next
-+                    0x45, 0x00, 0x01, 0x08, 0x00, 0x01, 0x00, 0x00, 0x40, 0x11, 0x7a, 0xe1, 0x7f,
-+                    0x00, 0x00, 0x01, 0x7f, 0x01, 0x01, 0x01, // udp header next
-+                    0x00, 0x43, 0x00, 0x44, 0x00, 0xf4, 0xf7,
-+                    0x7a,
-+                    // everything after is bootp
-+                ];
+@@ -738,8 +738,21 @@ where
+             map.as_slice_mut()[SHMEM_FUZZ_HDR_SIZE..(SHMEM_FUZZ_HDR_SIZE + input_size)]
+                 .copy_from_slice(&input_bytes.as_slice()[..input_size]);
+         } else {
+-            self.input_file
+-                .write_buf(&input_bytes.as_slice()[..input_size])?;
++            let mut immutable_header = vec![
++                // pcap header
++                0xd4, 0xc3, 0xb2, 0xa1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++                0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xe4, 0x00, 0x00, 0x00, 0xb7, 0xc8, 0x9e, 0x61,
++                0x3b, 0x35, 0x0e, 0x00, 0x08, 0x01, 0x00, 0x00, 0x08, 0x01, 0x00, 0x00,
++                // ip header next
++                0x45, 0x00, 0x01, 0x08, 0x00, 0x01, 0x00, 0x00, 0x40, 0x11, 0x7a, 0xe1, 0x7f, 0x00,
++                0x00, 0x01, 0x7f, 0x01, 0x01, 0x01, // udp header next
++                0x00, 0x43, 0x00, 0x44, 0x00, 0xf4, 0xf7, 0x7a,
++                // everything after is bootp
++            ];
 +
-+                immutable_header.extend_from_slice(&input.target_bytes().as_slice());
++            immutable_header.extend_from_slice(&input_bytes.as_slice()[..input_size]);
 +
-                 self.executor
-                     .out_file_mut()
--                    .write_buf(input.target_bytes().as_slice());
-+                    .write_buf(immutable_header.as_slice());
-             }
++            self.input_file.write_buf(&immutable_header)?;
          }
  
+         self.forkserver.set_last_run_timed_out(false);
