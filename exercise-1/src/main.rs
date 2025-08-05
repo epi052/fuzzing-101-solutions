@@ -4,7 +4,7 @@ use libafl::executors::ForkserverExecutor;
 use libafl::feedbacks::{MaxMapFeedback, TimeFeedback, TimeoutFeedback};
 use libafl::inputs::BytesInput;
 use libafl::monitors::SimpleMonitor;
-use libafl::mutators::{havoc_mutations, StdScheduledMutator};
+use libafl::mutators::{havoc_mutations, HavocScheduledMutator};
 use libafl::observers::{CanTrack, HitcountsMapObserver, StdMapObserver, TimeObserver};
 use libafl::schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler};
 use libafl::stages::StdMutationalStage;
@@ -16,7 +16,8 @@ use libafl_bolts::tuples::tuple_list;
 use libafl_bolts::{current_nanos, AsSliceMut};
 use std::path::PathBuf;
 use std::time::Duration;
-
+use libafl_bolts::StdTargetArgs;
+use libafl::executors::StdChildArgs;
 /// size of the shared memory mapping used as the coverage map
 const MAP_SIZE: usize = 65536;
 
@@ -58,7 +59,7 @@ fn main() -> Result<(), Error> {
     let mut shmem = shmem_provider.new_shmem(MAP_SIZE)?;
 
     // let the forkserver know the shmid
-    shmem.write_to_env("__AFL_SHM_ID")?;
+    unsafe { shmem.write_to_env("__AFL_SHM_ID")?; }
     let shmem_buf = shmem.as_slice_mut();
 
     // Create an observation channel using the signals map
@@ -99,7 +100,7 @@ fn main() -> Result<(), Error> {
     // means only enough feedback functions will be called to know whether or not the objective
     // has been met, i.e. short-circuiting logic.
     let mut objective =
-        feedback_and_fast!(TimeoutFeedback::new(), MaxMapFeedback::new(&edges_observer));
+        TimeoutFeedback::new(); // FIXED: removed duplicate MaxMapFeedback to avoid metadata collision
 
     //
     // Component: Monitor
@@ -199,7 +200,7 @@ fn main() -> Result<(), Error> {
     //
 
     // Setup a mutational stage with a basic bytes mutator
-    let mutator = StdScheduledMutator::new(havoc_mutations());
+    let mutator = HavocScheduledMutator::new(havoc_mutations());
 
     //
     // Component: Stage
